@@ -283,6 +283,14 @@
             </a>
           </header>
           <section class="browser-stage" aria-label="Website preview">
+            <webview
+              class="browser-webview"
+              id="browserWebview"
+              src="https://example.com"
+              partition="persist:mediacenter-browser"
+              allowpopups
+              hidden
+            ></webview>
             <iframe
               class="browser-frame"
               id="browserFrame"

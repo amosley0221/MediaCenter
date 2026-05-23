@@ -32,6 +32,7 @@ const mediaTabs = [...document.querySelectorAll(".media-tab")];
 const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
 const browserFrame = document.querySelector("#browserFrame");
+const browserWebview = document.querySelector("#browserWebview");
 const browserExternalLink = document.querySelector("#browserExternalLink");
 const browserFallback = document.querySelector("#browserFallback");
 const browserOpenLive = document.querySelector("#browserOpenLive");
@@ -1441,6 +1442,26 @@ function setBrowserFallbackVisible(isVisible) {
   browserFallback.hidden = !isVisible;
 }
 
+function shouldUseElectronBrowser() {
+  return canUseDesktopBridge() && Boolean(browserWebview);
+}
+
+function setActiveBrowserSurface(url, shouldFallback) {
+  if (shouldUseElectronBrowser()) {
+    browserFrame.hidden = true;
+    browserWebview.hidden = false;
+    setBrowserFallbackVisible(false);
+    browserWebview.src = url;
+    return;
+  }
+
+  browserFrame.hidden = false;
+  browserWebview.hidden = true;
+  browserFrame.dataset.fallbackMode = String(shouldFallback);
+  setBrowserFallbackVisible(shouldFallback);
+  browserFrame.src = shouldFallback ? "about:blank" : url;
+}
+
 function navigateBrowser(value) {
   const entry = value.trim() || BROWSER_HOME;
   const url = getBrowserUrl(entry);
@@ -1456,9 +1477,7 @@ function navigateBrowser(value) {
     registerOpenWindow(lastOpenedApp);
   }
 
-  browserFrame.dataset.fallbackMode = String(shouldFallback);
-  setBrowserFallbackVisible(shouldFallback);
-  browserFrame.src = shouldFallback ? "about:blank" : url;
+  setActiveBrowserSurface(url, shouldFallback);
 }
 
 function openBrowser(target = browserAddress.value || BROWSER_HOME) {
@@ -1802,6 +1821,22 @@ browserFrame.addEventListener("load", () => {
 
   if (browserFrame.dataset.fallbackMode !== "true") {
     setBrowserFallbackVisible(false);
+  }
+});
+
+browserWebview.addEventListener("did-navigate", (event) => {
+  browserAddress.value = event.url;
+  browserExternalLink.href = event.url;
+});
+
+browserWebview.addEventListener("did-navigate-in-page", (event) => {
+  browserAddress.value = event.url;
+  browserExternalLink.href = event.url;
+});
+
+browserWebview.addEventListener("page-title-updated", () => {
+  if (openWindowRecords.some((record) => record.key === "browser")) {
+    registerOpenWindow({ type: "browser", target: browserAddress.value });
   }
 });
 

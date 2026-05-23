@@ -24,6 +24,7 @@ MEDIA_CENTER_WINDOWED=1 npm start
 
 ## Desktop Features Wired
 
+- Electron `webview` browser surface for live sites that block iframe embedding.
 - Native file/folder picker for local media and books.
 - Native folder picker for watch folders, game folders, and network shares.
 - Steam library scan through `libraryfolders.vdf` and `appmanifest_*.acf`.
