@@ -18,6 +18,7 @@ const appViews = {
   media: document.querySelector(".media-center"),
   settings: document.querySelector("#settingsApp"),
 };
+const browserApp = appViews.browser;
 const mediaSearch = document.querySelector("#mediaSearch");
 const mediaSearchInput = document.querySelector("#mediaSearchInput");
 const addMediaButton = document.querySelector("#addMediaButton");
@@ -31,6 +32,8 @@ const mediaSections = document.querySelector("#mediaSections");
 const mediaTabs = [...document.querySelectorAll(".media-tab")];
 const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
+const browserUrlPeek = document.querySelector(".browser-url-peek");
+const browserActionPeek = document.querySelector(".browser-action-peek");
 const browserHomeButton = document.querySelector("#browserHomeButton");
 const browserFrame = document.querySelector("#browserFrame");
 const browserWebview = document.querySelector("#browserWebview");
@@ -929,6 +932,7 @@ function openWindowRecord(record) {
 
 function hideAppWindow() {
   appWindow.hidden = true;
+  browserApp.classList.remove("show-browser-url", "show-browser-actions");
   resetWindowGeometry();
   appWindow.classList.remove("controls-visible", "is-minimized", "is-fullscreen");
   setFullscreenShell(false);
@@ -1489,12 +1493,47 @@ function setBrowserSettingsOpen(isOpen) {
   browserSettingsPanel.hidden = !isOpen;
   browserSettingsPanel.classList.toggle("is-open", isOpen);
   browserSettingsButton.classList.toggle("active", isOpen);
+  browserApp.classList.toggle("show-browser-actions", isOpen);
 
   if (isOpen) {
     browserHomeInput.value = getBrowserHome();
     browserHomeInput.focus({ preventScroll: true });
     browserHomeInput.select();
   }
+}
+
+function setBrowserChromePeek(area, isVisible) {
+  if (area === "url") {
+    browserApp.classList.toggle("show-browser-url", isVisible);
+  }
+
+  if (area === "actions") {
+    browserApp.classList.toggle("show-browser-actions", isVisible || !browserSettingsPanel.hidden);
+  }
+}
+
+function updateBrowserChromePeek(event) {
+  if (appWindow.hidden || browserApp.hidden) {
+    setBrowserChromePeek("url", false);
+    setBrowserChromePeek("actions", false);
+    return;
+  }
+
+  const urlBounds = browserUrlPeek.getBoundingClientRect();
+  const actionBounds = browserActionPeek.getBoundingClientRect();
+  const inUrlPeek =
+    event.clientX >= urlBounds.left &&
+    event.clientX <= urlBounds.right &&
+    event.clientY >= urlBounds.top &&
+    event.clientY <= urlBounds.bottom;
+  const inActionPeek =
+    event.clientX >= actionBounds.left &&
+    event.clientX <= actionBounds.right &&
+    event.clientY >= actionBounds.top &&
+    event.clientY <= actionBounds.bottom;
+
+  setBrowserChromePeek("url", inUrlPeek || browserUrlPeek.contains(document.activeElement));
+  setBrowserChromePeek("actions", inActionPeek || browserActionPeek.contains(document.activeElement));
 }
 
 function getBrowserAddressCaretIndex(clientX) {
@@ -1572,7 +1611,6 @@ function openBrowser(target = browserAddress.value || getBrowserHome()) {
   navigateBrowser(target);
   registerOpenWindow(lastOpenedApp);
   openFullscreenApp();
-  browserAddress.focus({ preventScroll: true });
 }
 
 function openSettings() {
@@ -1897,6 +1935,22 @@ useCurrentPageButton.addEventListener("click", () => {
   browserHomeInput.select();
 });
 
+browserUrlPeek.addEventListener("pointerenter", () => {
+  setBrowserChromePeek("url", true);
+});
+
+browserUrlPeek.addEventListener("pointerleave", () => {
+  setBrowserChromePeek("url", browserUrlPeek.contains(document.activeElement));
+});
+
+browserActionPeek.addEventListener("pointerenter", () => {
+  setBrowserChromePeek("actions", true);
+});
+
+browserActionPeek.addEventListener("pointerleave", () => {
+  setBrowserChromePeek("actions", browserActionPeek.contains(document.activeElement));
+});
+
 browserAddress.addEventListener("pointerdown", (event) => {
   if (document.activeElement !== browserAddress || browserAddressSelectMode === "ready") {
     event.preventDefault();
@@ -2048,6 +2102,7 @@ resizeHandles.forEach((handle) => {
 
 window.addEventListener("pointermove", handleWindowPointerMove);
 window.addEventListener("pointermove", updateTaskbarPeek);
+window.addEventListener("pointermove", updateBrowserChromePeek);
 window.addEventListener("pointerup", endWindowInteraction);
 window.addEventListener("pointercancel", endWindowInteraction);
 

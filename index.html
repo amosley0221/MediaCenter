@@ -249,50 +249,54 @@
         </div>
 
         <div class="app-content browser-app" id="browserApp" hidden>
-          <header class="browser-toolbar">
-            <button type="button" class="browser-tool-button" id="browserHomeButton" aria-label="Go to browser home page">
-              <svg viewBox="0 0 24 24">
-                <path d="m4 12 8-7 8 7" />
-                <path d="M7 10.5V19h10v-8.5" />
-              </svg>
-            </button>
-            <form class="browser-search" id="browserSearch" aria-label="Web search">
-              <input
-                id="browserAddress"
-                type="search"
-                autocomplete="off"
-                spellcheck="false"
-                value="https://example.com"
-                aria-label="Search or enter website"
-                placeholder="Search or enter website"
-              />
-              <button type="submit" aria-label="Go">
+          <header class="browser-toolbar" aria-label="Browser controls">
+            <div class="browser-url-peek">
+              <form class="browser-search" id="browserSearch" aria-label="Web search">
+                <input
+                  id="browserAddress"
+                  type="search"
+                  autocomplete="off"
+                  spellcheck="false"
+                  value="https://example.com"
+                  aria-label="Search or enter website"
+                  placeholder="Search or enter website"
+                />
+                <button type="submit" aria-label="Go">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 12h13" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
+                </button>
+              </form>
+            </div>
+            <div class="browser-action-peek" aria-label="Browser shortcuts">
+              <button type="button" class="browser-tool-button" id="browserHomeButton" aria-label="Go to browser home page">
                 <svg viewBox="0 0 24 24">
-                  <path d="M5 12h13" />
-                  <path d="m13 6 6 6-6 6" />
+                  <path d="m4 12 8-7 8 7" />
+                  <path d="M7 10.5V19h10v-8.5" />
                 </svg>
               </button>
-            </form>
-            <button type="button" class="browser-tool-button" id="browserSettingsButton" aria-label="Browser settings">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 8.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z" />
-                <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.6A8 8 0 0 0 7 6.6l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5Z" />
-              </svg>
-            </button>
-            <a
-              class="browser-open"
-              id="browserExternalLink"
-              href="https://example.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open website externally"
-            >
-              <svg viewBox="0 0 24 24">
-                <path d="M14 4h6v6" />
-                <path d="m10 14 10-10" />
-                <path d="M20 15v5H4V4h5" />
-              </svg>
-            </a>
+              <button type="button" class="browser-tool-button" id="browserSettingsButton" aria-label="Browser settings">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 8.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z" />
+                  <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.6A8 8 0 0 0 7 6.6l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5Z" />
+                </svg>
+              </button>
+              <a
+                class="browser-open"
+                id="browserExternalLink"
+                href="https://example.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open website externally"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M14 4h6v6" />
+                  <path d="m10 14 10-10" />
+                  <path d="M20 15v5H4V4h5" />
+                </svg>
+              </a>
+            </div>
           </header>
           <section class="browser-stage" aria-label="Website preview">
             <webview
