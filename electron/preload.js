@@ -4,8 +4,11 @@ contextBridge.exposeInMainWorld(
   "mediaCenterDesktop",
   Object.freeze({
     isElectron: true,
+    loadLibrary: () => ipcRenderer.invoke("media:load-library"),
+    openMediaItem: (item) => ipcRenderer.invoke("media:open-item", item),
     pickSourceFolder: (sourceKey) => ipcRenderer.invoke("media:pick-source-folder", { sourceKey }),
     revealPath: (filePath) => ipcRenderer.invoke("media:reveal-path", filePath),
+    scanMediaSource: (sourceKey, paths) => ipcRenderer.invoke("media:scan-source", { sourceKey, paths }),
     scanSteamLibrary: () => ipcRenderer.invoke("media:scan-steam"),
   }),
 );

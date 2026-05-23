@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { loadLibrary, upsertScannedSource, upsertSteamScan } = require("./media-library");
 const { scanSteamLibraries } = require("./steam-scanner");
 
 const SOURCE_TITLES = {
@@ -13,6 +14,10 @@ const SOURCE_TITLES = {
 const FILE_AND_FOLDER_SOURCES = new Set(["books", "local"]);
 
 let mainWindow = null;
+
+function getLibraryPath() {
+  return path.join(app.getPath("userData"), "media-library.json");
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -85,7 +90,8 @@ ipcMain.handle("media:pick-source-folder", async (_event, payload = {}) => {
 });
 
 ipcMain.handle("media:scan-steam", async () => {
-  return scanSteamLibraries();
+  const steamScan = await scanSteamLibraries();
+  return upsertSteamScan(getLibraryPath(), steamScan);
 });
 
 ipcMain.handle("media:reveal-path", async (_event, filePath) => {
@@ -95,4 +101,28 @@ ipcMain.handle("media:reveal-path", async (_event, filePath) => {
 
   shell.showItemInFolder(filePath);
   return { ok: true };
+});
+
+ipcMain.handle("media:load-library", async () => {
+  return loadLibrary(getLibraryPath());
+});
+
+ipcMain.handle("media:scan-source", async (_event, payload = {}) => {
+  const sourceKey = payload.sourceKey || "local";
+  const sourcePaths = Array.isArray(payload.paths) && payload.paths.length ? payload.paths : [payload.path];
+  return upsertScannedSource(getLibraryPath(), sourceKey, sourcePaths);
+});
+
+ipcMain.handle("media:open-item", async (_event, item = {}) => {
+  if (item.launchUrl) {
+    await shell.openExternal(item.launchUrl);
+    return { ok: true };
+  }
+
+  if (item.path) {
+    const error = await shell.openPath(item.path);
+    return { ok: !error, error };
+  }
+
+  return { ok: false, error: "No playable path was available for this item." };
 });

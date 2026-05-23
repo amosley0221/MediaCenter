@@ -28,8 +28,10 @@ MEDIA_CENTER_WINDOWED=1 npm start
 - Native file/folder picker for local media and books.
 - Native folder picker for watch folders, game folders, and network shares.
 - Steam library scan through `libraryfolders.vdf` and `appmanifest_*.acf`.
-- Scanned Steam games appear in the Games section as a `Steam Library` shelf.
+- Local scanner imports real movie, TV episode, music, book, and local game files into persistent MediaCenter shelves.
+- Scanned Steam games persist in the Games section with Steam cover URLs and `steam://rungameid` launch links.
 - Source choices persist in local storage for this prototype.
+- The desktop media library is saved in Electron app data as `media-library.json`.
 
 ## Packaging
 

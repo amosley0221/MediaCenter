@@ -58,6 +58,7 @@ const WINDOW_MARGIN = 8;
 const DEFAULT_BROWSER_HOME = "https://example.com";
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
 const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
+const REAL_LIBRARY_SOURCE = "desktop-library";
 const BLOCKED_EMBED_HOSTS = [
   "amazon.com",
   "disneyplus.com",
@@ -734,6 +735,7 @@ let activeWindowKey = null;
 let taskSwitcherPinned = false;
 let taskSwitcherCloseTimer = null;
 let mediaSources = getInitialMediaSources();
+let desktopLibrary = null;
 let browserHomeUrl = loadBrowserHome();
 let browserAddressSelectMode = "ready";
 
@@ -799,6 +801,210 @@ function saveMediaSources() {
 
 function getInitialMediaSources() {
   return loadSavedMediaSources() || (canUseDesktopBridge() ? [] : getDemoMediaSources());
+}
+
+function sortNewestFirst(items) {
+  return [...items].sort((a, b) => {
+    return new Date(b.addedAt || b.updatedAt || 0) - new Date(a.addedAt || a.updatedAt || 0);
+  });
+}
+
+function getSectionItems(section) {
+  return desktopLibrary?.sections?.[section] || [];
+}
+
+function cloneLibraryItem(item, section) {
+  return {
+    ...item,
+    section: item.section || section,
+  };
+}
+
+function getEpisodeSortValue(episode) {
+  return episode.seasonNumber * 1000 + episode.episodeNumber;
+}
+
+function buildSeriesItems(episodes) {
+  const seriesMap = new Map();
+
+  sortNewestFirst(episodes).forEach((episode) => {
+    const seriesTitle = episode.seriesTitle || episode.title;
+    const seasonNumber = episode.seasonNumber || 1;
+    const series = seriesMap.get(seriesTitle) || {
+      episodes: [],
+      seasonsByNumber: new Map(),
+      title: seriesTitle,
+    };
+    const season = series.seasonsByNumber.get(seasonNumber) || {
+      episodes: [],
+      number: seasonNumber,
+      title: `Season ${seasonNumber}`,
+    };
+
+    season.episodes.push({
+      ...cloneLibraryItem(episode, "tv"),
+      meta: episode.meta || `S${String(seasonNumber).padStart(2, "0")} E${String(episode.episodeNumber || 1).padStart(2, "0")}`,
+      title: episode.title || `Episode ${episode.episodeNumber || season.episodes.length + 1}`,
+    });
+    series.episodes.push(episode);
+    series.seasonsByNumber.set(seasonNumber, season);
+    seriesMap.set(seriesTitle, series);
+  });
+
+  return [...seriesMap.values()]
+    .map((series) => {
+      const seasons = [...series.seasonsByNumber.values()]
+        .sort((a, b) => a.number - b.number)
+        .map((season) => ({
+          ...season,
+          episodes: season.episodes.sort((a, b) => getEpisodeSortValue(a) - getEpisodeSortValue(b)),
+        }));
+      const episodeCount = series.episodes.length;
+      const newestEpisode = sortNewestFirst(series.episodes)[0];
+
+      return {
+        addedAt: newestEpisode?.addedAt,
+        meta: `${seasons.length} ${seasons.length === 1 ? "season" : "seasons"} | ${episodeCount} ${episodeCount === 1 ? "episode" : "episodes"}`,
+        seasons,
+        source: "desktop-scan",
+        title: series.title,
+      };
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function createRealShelf(title, items) {
+  if (!items.length) {
+    return null;
+  }
+
+  return {
+    source: REAL_LIBRARY_SOURCE,
+    title,
+    items,
+  };
+}
+
+function removeRealShelves(config) {
+  config.shelves = config.shelves.filter((shelf) => shelf.source !== REAL_LIBRARY_SOURCE);
+}
+
+function buildRealMovieShelves() {
+  const movies = getSectionItems("movies").map((item) => cloneLibraryItem(item, "movies"));
+
+  return [
+    createRealShelf("Recently Added", sortNewestFirst(movies).slice(0, 16)),
+    createRealShelf("Local Movies", [...movies].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
+  ].filter(Boolean);
+}
+
+function buildRealTvShelves() {
+  const episodes = getSectionItems("tv").map((item) => cloneLibraryItem(item, "tv"));
+  const series = buildSeriesItems(episodes);
+
+  return [
+    createRealShelf("Series", series),
+    createRealShelf("New Episodes", sortNewestFirst(episodes).slice(0, 16)),
+  ].filter(Boolean);
+}
+
+function buildRealMusicShelves() {
+  const music = getSectionItems("music").map((item) => cloneLibraryItem(item, "music"));
+  const albums = new Map();
+
+  sortNewestFirst(music).forEach((track) => {
+    const albumTitle = track.album || "Local Music";
+    const album = albums.get(albumTitle) || {
+      addedAt: track.addedAt,
+      artist: track.artist || "Local Music",
+      meta: `${track.artist || "Local Music"} | Album`,
+      section: "music",
+      title: albumTitle,
+      trackCount: 0,
+    };
+
+    album.trackCount += 1;
+    album.meta = `${album.artist} | ${album.trackCount} ${album.trackCount === 1 ? "track" : "tracks"}`;
+    albums.set(albumTitle, album);
+  });
+
+  return [
+    createRealShelf("Recently Added", sortNewestFirst(music).slice(0, 16)),
+    createRealShelf("Albums", [...albums.values()].slice(0, 18)),
+  ].filter(Boolean);
+}
+
+function buildRealBookShelves() {
+  const books = getSectionItems("books").map((item) => cloneLibraryItem(item, "books"));
+
+  return [
+    createRealShelf("Recently Added", sortNewestFirst(books).slice(0, 16)),
+    createRealShelf("Reading Library", [...books].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
+  ].filter(Boolean);
+}
+
+function buildRealGameShelves() {
+  const games = getSectionItems("games").map((item) => cloneLibraryItem(item, "games"));
+  const steamGames = games.filter((item) => item.source === "steam");
+  const localGames = games.filter((item) => item.source !== "steam");
+
+  return [
+    createRealShelf("Installed Games", sortNewestFirst(games).slice(0, 18)),
+    createRealShelf("Steam Library", steamGames.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
+    createRealShelf("Local Game Folder", localGames.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
+  ].filter(Boolean);
+}
+
+function buildRealHomeShelves() {
+  const sections = ["movies", "tv", "music", "books", "games"];
+  const allItems = sections.flatMap((section) => {
+    if (section === "tv") {
+      return buildSeriesItems(getSectionItems("tv")).map((item) => ({ ...item, section: "tv" }));
+    }
+
+    return getSectionItems(section).map((item) => cloneLibraryItem(item, section));
+  });
+  const recentItems = sections.flatMap((section) => {
+    return getSectionItems(section).map((item) => cloneLibraryItem(item, section));
+  });
+
+  return [
+    createRealShelf("From Your Library", sortNewestFirst(allItems).slice(0, 16)),
+    createRealShelf("Recently Scanned", sortNewestFirst(recentItems).slice(0, 16)),
+  ].filter(Boolean);
+}
+
+function applyDesktopLibrary(library) {
+  if (!library?.sections) {
+    return;
+  }
+
+  desktopLibrary = library;
+  removeRealShelves(mediaHome);
+  Object.values(mediaCatalog).forEach(removeRealShelves);
+
+  mediaHome.shelves.unshift(...buildRealHomeShelves());
+  mediaCatalog.movies.shelves.unshift(...buildRealMovieShelves());
+  mediaCatalog.tv.shelves.unshift(...buildRealTvShelves());
+  mediaCatalog.music.shelves.unshift(...buildRealMusicShelves());
+  mediaCatalog.books.shelves.unshift(...buildRealBookShelves());
+  mediaCatalog.games.shelves.unshift(...buildRealGameShelves());
+
+  if (!appViews.media.hidden) {
+    renderMediaCenter(currentMediaSection);
+  }
+}
+
+async function loadDesktopLibrary() {
+  if (!canUseDesktopBridge() || typeof desktopBridge.loadLibrary !== "function") {
+    return;
+  }
+
+  try {
+    applyDesktopLibrary(await desktopBridge.loadLibrary());
+  } catch {
+    // The app can still run with its demo shelves if desktop storage is unavailable.
+  }
 }
 
 function updateClock() {
@@ -1217,6 +1423,11 @@ function applySteamGamesToLibrary(games) {
     .filter((game) => game.name && !game.error)
     .slice(0, 16)
     .map((game) => ({
+      appId: game.appId,
+      coverUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`,
+      launchUrl: `steam://rungameid/${game.appId}`,
+      path: game.installDir,
+      source: "steam",
       title: game.name,
       meta: `Steam | ${game.appId}`,
     }));
@@ -1256,7 +1467,12 @@ async function addSteamLibrarySource() {
   const games = result.games || [];
   const firstLibrary = libraries[0]?.steamAppsPath || libraries[0]?.path || "Default Steam locations";
 
-  applySteamGamesToLibrary(games);
+  if (result.library) {
+    applyDesktopLibrary(result.library);
+  } else {
+    applySteamGamesToLibrary(games);
+  }
+
   upsertMediaSource({
     ...preset,
     key: "steam",
@@ -1295,6 +1511,7 @@ async function addFolderSource(sourceKey) {
   }
 
   const sourcePaths = result.paths?.length ? result.paths : [result.path];
+  let scanResult = null;
 
   sourcePaths.filter(Boolean).forEach((sourcePath) => {
     upsertMediaSource({
@@ -1306,15 +1523,42 @@ async function addFolderSource(sourceKey) {
     });
   });
 
+  if (typeof desktopBridge.scanMediaSource === "function") {
+    scanResult = await desktopBridge.scanMediaSource(sourceKey, sourcePaths);
+
+    if (scanResult?.library) {
+      applyDesktopLibrary(scanResult.library);
+    }
+
+    if (scanResult?.summary) {
+      const scannedCount = scanResult.summary.total || 0;
+      sourcePaths.filter(Boolean).forEach((sourcePath) => {
+        upsertMediaSource({
+          ...preset,
+          detail: `${scannedCount} ${scannedCount === 1 ? "item" : "items"} imported from this source`,
+          key: getSourceKey(sourceKey, sourcePath),
+          path: sourcePath,
+          status: scannedCount ? "Imported" : "No matches",
+        });
+      });
+    }
+  }
+
   if (sourceKey === "games") {
     renderMediaCenter("games");
     lastOpenedApp = { type: "media", section: "games" };
     registerOpenWindow(lastOpenedApp);
   }
 
-  if (sourceKey === "books") {
-    renderMediaCenter("books");
-    lastOpenedApp = { type: "media", section: "books" };
+  if (sourceKey === "books" || sourceKey === "local" || sourceKey === "network" || sourceKey === "watch") {
+    const summary = scanResult?.summary || {};
+    const targetSection =
+      sourceKey === "books"
+        ? "books"
+        : ["movies", "tv", "music", "books"].find((section) => summary[section] > 0) || "home";
+
+    renderMediaCenter(targetSection);
+    lastOpenedApp = { type: "media", section: targetSection };
     registerOpenWindow(lastOpenedApp);
   }
 }
@@ -1452,11 +1696,25 @@ function getStreamingItemTarget(item) {
   return serviceHome || null;
 }
 
+async function openDesktopMediaItem(item) {
+  if (!canUseDesktopBridge() || typeof desktopBridge.openMediaItem !== "function") {
+    return false;
+  }
+
+  const result = await desktopBridge.openMediaItem(item);
+  return Boolean(result?.ok);
+}
+
 function openMediaItem(item, section) {
   const streamingTarget = getStreamingItemTarget(item);
 
   if (streamingTarget) {
     openBrowser(streamingTarget);
+    return;
+  }
+
+  if (item.launchUrl || item.path) {
+    openDesktopMediaItem(item);
     return;
   }
 
@@ -1482,6 +1740,10 @@ function createMediaCard(item, section, index) {
   if (item.brand) {
     cover.classList.add(`service-${item.brand}`);
   }
+  if (item.coverUrl) {
+    cover.classList.add("has-cover");
+    cover.style.backgroundImage = `linear-gradient(transparent, rgba(7, 8, 26, 0.72)), url("${String(item.coverUrl).replace(/"/g, "%22")}")`;
+  }
   cover.style.setProperty("--cover-shift", `${index * 18}deg`);
   initials.textContent = item.title
     .split(" ")
@@ -1501,7 +1763,7 @@ function createMediaCard(item, section, index) {
     article.append(badge);
   }
 
-  if (getStreamingItemTarget(item)) {
+  if (getStreamingItemTarget(item) || item.launchUrl || item.path) {
     article.addEventListener("click", () => openMediaItem(item, section));
   } else if (item.seasons) {
     article.addEventListener("click", () => {
@@ -2499,3 +2761,4 @@ function applyStartupState() {
 updateClock();
 setInterval(updateClock, 1000 * 15);
 applyStartupState();
+loadDesktopLibrary();

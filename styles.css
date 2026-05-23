@@ -1336,6 +1336,11 @@ svg {
   aspect-ratio: 2 / 3;
 }
 
+.media-cover.has-cover {
+  background-position: center;
+  background-size: cover;
+}
+
 .media-cover::after {
   position: absolute;
   inset: auto 0 0;
@@ -1398,6 +1403,10 @@ svg {
   height: 62px;
   border-color: rgba(255, 255, 255, 0.82);
   font-size: 15px;
+}
+
+.media-cover.has-cover span {
+  display: none;
 }
 
 .media-progress {
