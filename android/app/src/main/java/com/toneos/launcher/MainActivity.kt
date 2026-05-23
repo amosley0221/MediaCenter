@@ -1,36 +1,44 @@
 package com.toneos.launcher
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -48,9 +56,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,11 +73,51 @@ data class LauncherApp(
     val packageName: String,
 )
 
-enum class ToneScreen(val label: String) {
-    Home("Home"),
-    Apps("Apps"),
-    Remote("PC Remote"),
+data class ToneApp(
+    val title: String,
+    val subtitle: String,
+    val initials: String,
+    val screen: ToneScreen,
+    val colors: List<Color>,
+)
+
+enum class ToneScreen {
+    MediaCenter,
+    Apps,
+    Remote,
+    Settings,
 }
+
+private val toneApps = listOf(
+    ToneApp(
+        title = "MediaCenter",
+        subtitle = "Home theater library",
+        initials = "MC",
+        screen = ToneScreen.MediaCenter,
+        colors = listOf(Color(0xFF7ED957), Color(0xFF55C8FF), Color(0xFF6957FF)),
+    ),
+    ToneApp(
+        title = "Apps",
+        subtitle = "Android apps",
+        initials = "AP",
+        screen = ToneScreen.Apps,
+        colors = listOf(Color(0xFFFFA63D), Color(0xFFFF5E7B), Color(0xFF6957FF)),
+    ),
+    ToneApp(
+        title = "PC Remote",
+        subtitle = "Control ToneOS",
+        initials = "PC",
+        screen = ToneScreen.Remote,
+        colors = listOf(Color(0xFF55C8FF), Color(0xFF6957FF), Color(0xFF10122B)),
+    ),
+    ToneApp(
+        title = "Settings",
+        subtitle = "Launcher setup",
+        initials = "ST",
+        screen = ToneScreen.Settings,
+        colors = listOf(Color(0xFFB998FF), Color(0xFF55C8FF), Color(0xFF10122B)),
+    ),
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,11 +180,12 @@ fun ToneOSLauncher(
     writePreference: (String, String) -> Unit,
 ) {
     var apps by remember { mutableStateOf(emptyList<LauncherApp>()) }
-    var query by remember { mutableStateOf("") }
-    var screen by remember { mutableStateOf(ToneScreen.Home) }
+    var activeScreen by remember { mutableStateOf<ToneScreen?>(null) }
+    var appDrawerOpen by remember { mutableStateOf(false) }
+    var appQuery by remember { mutableStateOf("") }
     var serverUrl by remember { mutableStateOf(readPreference("server_url")) }
     var serverPin by remember { mutableStateOf(readPreference("server_pin")) }
-    var remoteStatus by remember { mutableStateOf("Enter your ToneOS Media Server URL to control the PC.") }
+    var remoteStatus by remember { mutableStateOf("Ready") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -147,47 +198,100 @@ fun ToneOSLauncher(
                 .fillMaxSize()
                 .background(ToneWallpaper),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                ToneTopBar(screen, onScreenChange = { screen = it }, openHomeSettings = openHomeSettings)
-
-                when (screen) {
-                    ToneScreen.Home -> HomeScreen(
-                        apps = apps.take(12),
-                        launchApp = launchApp,
-                        openRemote = { screen = ToneScreen.Remote },
-                    )
-                    ToneScreen.Apps -> AppsScreen(
-                        apps = apps,
-                        query = query,
-                        onQueryChange = { query = it },
-                        launchApp = launchApp,
-                    )
-                    ToneScreen.Remote -> RemoteScreen(
-                        serverUrl = serverUrl,
-                        serverPin = serverPin,
-                        status = remoteStatus,
-                        onServerUrlChange = {
-                            serverUrl = it
-                            writePreference("server_url", it)
-                        },
-                        onServerPinChange = {
-                            serverPin = it
-                            writePreference("server_pin", it)
-                        },
-                        onCommand = { command ->
-                            remoteStatus = "Sending $command..."
-                            scope.launch {
-                                remoteStatus = postRemoteCommand(serverUrl, serverPin, command)
-                            }
-                        },
-                    )
-                }
+            when (activeScreen) {
+                ToneScreen.MediaCenter -> MediaCenterScreen(
+                    serverUrl = serverUrl,
+                    serverPin = serverPin,
+                    onServerUrlChange = {
+                        serverUrl = it
+                        writePreference("server_url", it)
+                    },
+                    onServerPinChange = {
+                        serverPin = it
+                        writePreference("server_pin", it)
+                    },
+                )
+                ToneScreen.Apps -> AppsScreen(
+                    apps = apps,
+                    query = appQuery,
+                    onQueryChange = { appQuery = it },
+                    launchApp = launchApp,
+                )
+                ToneScreen.Remote -> RemoteScreen(
+                    serverUrl = serverUrl,
+                    serverPin = serverPin,
+                    status = remoteStatus,
+                    onServerUrlChange = {
+                        serverUrl = it
+                        writePreference("server_url", it)
+                    },
+                    onServerPinChange = {
+                        serverPin = it
+                        writePreference("server_pin", it)
+                    },
+                    onCommand = { command ->
+                        remoteStatus = "Sending ${command.second}"
+                        scope.launch {
+                            remoteStatus = postRemoteCommand(serverUrl, serverPin, command.first)
+                        }
+                    },
+                )
+                ToneScreen.Settings -> SettingsScreen(
+                    serverUrl = serverUrl,
+                    serverPin = serverPin,
+                    onServerUrlChange = {
+                        serverUrl = it
+                        writePreference("server_url", it)
+                    },
+                    onServerPinChange = {
+                        serverPin = it
+                        writePreference("server_pin", it)
+                    },
+                    openHomeSettings = openHomeSettings,
+                )
+                null -> DesktopScreen(
+                    installedApps = apps.take(6),
+                    launchApp = launchApp,
+                    openToneApp = {
+                        activeScreen = it
+                        appDrawerOpen = false
+                    },
+                )
             }
+
+            StatusPill(modifier = Modifier.align(Alignment.TopEnd))
+
+            if (appDrawerOpen) {
+                AppDrawer(
+                    activeScreen = activeScreen,
+                    openToneApp = {
+                        activeScreen = it
+                        appDrawerOpen = false
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
+
+            ToneTaskbar(
+                appDrawerOpen = appDrawerOpen,
+                onDrawerToggle = { appDrawerOpen = !appDrawerOpen },
+                onBack = {
+                    if (appDrawerOpen) {
+                        appDrawerOpen = false
+                    } else {
+                        activeScreen = null
+                    }
+                },
+                onApps = {
+                    activeScreen = ToneScreen.Apps
+                    appDrawerOpen = false
+                },
+                onHome = {
+                    activeScreen = null
+                    appDrawerOpen = false
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
@@ -201,83 +305,284 @@ private val ToneWallpaper = Brush.linearGradient(
 )
 
 @Composable
-fun ToneTopBar(
-    selected: ToneScreen,
-    onScreenChange: (ToneScreen) -> Unit,
-    openHomeSettings: () -> Unit,
+fun StatusPill(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.padding(top = 18.dp, end = 18.dp),
+        color = Color(0xD610122B),
+        shape = RoundedCornerShape(10.dp),
+        shadowElevation = 10.dp,
+    ) {
+        Text(
+            text = "Wi-Fi  ToneOS",
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+fun DesktopScreen(
+    installedApps: List<LauncherApp>,
+    launchApp: (String) -> Unit,
+    openToneApp: (ToneScreen) -> Unit,
 ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp, vertical = 34.dp)
+            .padding(bottom = 86.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Spacer(modifier = Modifier.height(22.dp))
+        Text("TONEOS", color = Color.White.copy(alpha = 0.74f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("Android Launcher", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.SemiBold)
+
+        HeroPanel(openToneApp)
+
+        Text("Pinned", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+        LazyVerticalGrid(
+            modifier = Modifier.weight(1f),
+            columns = GridCells.Adaptive(minSize = 150.dp),
+            contentPadding = PaddingValues(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            items(toneApps) { app ->
+                ToneAppTile(app = app, selected = false, onClick = { openToneApp(app.screen) })
+            }
+            items(installedApps) { app ->
+                InstalledAppTile(app = app, launchApp = launchApp)
+            }
+        }
+    }
+}
+
+@Composable
+fun HeroPanel(openToneApp: (ToneScreen) -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xAA10122B),
+        color = Color(0xB810122B),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
-        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        shadowElevation = 18.dp,
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text("TONEOS", color = Color.White.copy(alpha = 0.68f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Android Launcher", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                AppIcon(initials = "MC", colors = toneApps.first().colors, size = 82)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("MediaCenter", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Watch your ToneOS library from the home theater PC.", color = Color.White.copy(alpha = 0.74f), fontSize = 15.sp)
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                ToneScreen.entries.forEach { screen ->
-                    FilterChip(
-                        selected = selected == screen,
-                        onClick = { onScreenChange(screen) },
-                        label = { Text(screen.label) },
-                    )
-                }
-                Button(onClick = openHomeSettings, colors = ButtonDefaults.buttonColors(containerColor = Color.White)) {
-                    Text("Set Home", color = Color(0xFF11152A))
-                }
+            Button(
+                onClick = { openToneApp(ToneScreen.MediaCenter) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text("Open", color = Color(0xFF11152A), fontWeight = FontWeight.SemiBold)
             }
         }
     }
 }
 
 @Composable
-fun HomeScreen(
-    apps: List<LauncherApp>,
-    launchApp: (String) -> Unit,
-    openRemote: () -> Unit,
+fun AppDrawer(
+    activeScreen: ToneScreen?,
+    openToneApp: (ToneScreen) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        HeroCard(openRemote)
-        Text("Favorite Apps", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
-        AppGrid(apps = apps, launchApp = launchApp, modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-fun HeroCard(openRemote: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xB810122B),
-        shape = RoundedCornerShape(26.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        modifier = modifier
+            .padding(bottom = 96.dp)
+            .fillMaxWidth(0.9f)
+            .widthIn(max = 620.dp),
+        color = Color(0xEC10122B),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+        shadowElevation = 26.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        LazyVerticalGrid(
+            modifier = Modifier
+                .heightIn(max = 340.dp)
+                .padding(16.dp),
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("MEDIA CENTER CLIENT", color = Color.White.copy(alpha = 0.68f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Control ToneOS from Android", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                Text(
-                    "Launch apps, send ToneOS commands, and use this as the base for the future mobile MediaCenter client.",
-                    color = Color.White.copy(alpha = 0.76f),
-                    fontSize = 16.sp,
+            items(toneApps) { app ->
+                ToneAppTile(
+                    app = app,
+                    selected = activeScreen == app.screen,
+                    onClick = { openToneApp(app.screen) },
                 )
             }
-            Button(onClick = openRemote, colors = ButtonDefaults.buttonColors(containerColor = Color.White)) {
-                Text("Open Remote", color = Color(0xFF11152A), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun ToneTaskbar(
+    appDrawerOpen: Boolean,
+    onDrawerToggle: () -> Unit,
+    onBack: () -> Unit,
+    onApps: () -> Unit,
+    onHome: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.padding(bottom = 18.dp),
+        color = Color(0xE610122B),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        shadowElevation = 18.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TaskButton(label = "O", selected = appDrawerOpen, onClick = onDrawerToggle)
+            TaskButton(label = "<", selected = false, onClick = onBack)
+            TaskButton(label = "[]", selected = false, onClick = onApps)
+            TaskButton(label = "^", selected = false, onClick = onHome)
+        }
+    }
+}
+
+@Composable
+fun TaskButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .size(54.dp)
+            .clickable(onClick = onClick),
+        color = if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent,
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+fun ToneAppTile(app: ToneApp, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(82.dp)
+            .clickable(onClick = onClick),
+        color = if (selected) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.05f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = if (selected) 0.42f else 0.10f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppIcon(initials = app.initials, colors = app.colors, size = 54)
+            Column {
+                Text(app.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(app.subtitle, color = Color.White.copy(alpha = 0.65f), fontSize = 12.sp, maxLines = 1)
             }
         }
     }
+}
+
+@Composable
+fun InstalledAppTile(app: LauncherApp, launchApp: (String) -> Unit) {
+    Card(
+        onClick = { launchApp(app.packageName) },
+        colors = CardDefaults.cardColors(containerColor = Color(0xB810122B)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AppIcon(
+                initials = app.label.firstOrNull()?.uppercase() ?: "A",
+                colors = listOf(Color(0xFF55C8FF), Color(0xFF6957FF)),
+                size = 54,
+            )
+            Text(app.label, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+fun AppIcon(initials: String, colors: List<Color>, size: Int) {
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .clip(RoundedCornerShape((size / 3).dp))
+            .background(Brush.linearGradient(colors)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier.size((size * 0.56f).dp),
+            color = Color.Transparent,
+            shape = CircleShape,
+            border = BorderStroke(2.dp, Color.White.copy(alpha = 0.68f)),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(initials.take(2), color = Color.White, fontSize = (size / 4).sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun MediaCenterScreen(
+    serverUrl: String,
+    serverPin: String,
+    onServerUrlChange: (String) -> Unit,
+    onServerPinChange: (String) -> Unit,
+) {
+    if (serverUrl.isBlank()) {
+        ServerSetupScreen(
+            title = "MediaCenter",
+            serverUrl = serverUrl,
+            serverPin = serverPin,
+            onServerUrlChange = onServerUrlChange,
+            onServerPinChange = onServerPinChange,
+        )
+        return
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        ToneWebClient(url = "${normalizeServerUrl(serverUrl)}/client")
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun ToneWebClient(url: String) {
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { context ->
+            WebView(context).apply {
+                webViewClient = WebViewClient()
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.mediaPlaybackRequiresUserGesture = false
+                settings.cacheMode = WebSettings.LOAD_DEFAULT
+                loadUrl(url)
+            }
+        },
+        update = { webView ->
+            if (webView.url != url) {
+                webView.loadUrl(url)
+            }
+        },
+    )
 }
 
 @Composable
@@ -289,55 +594,134 @@ fun AppsScreen(
 ) {
     val filteredApps = apps.filter { it.label.contains(query, ignoreCase = true) }
 
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        OutlinedTextField(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp, vertical = 34.dp)
+            .padding(bottom = 86.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ScreenTitle(kicker = "TONEOS", title = "Apps")
+        PillTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Search installed apps") },
+            label = "Search apps",
         )
-        AppGrid(apps = filteredApps, launchApp = launchApp, modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-fun AppGrid(apps: List<LauncherApp>, launchApp: (String) -> Unit, modifier: Modifier = Modifier) {
-    LazyVerticalGrid(
-        modifier = modifier,
-        columns = GridCells.Adaptive(minSize = 156.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        items(apps) { app ->
-            AppTile(app = app, launchApp = launchApp)
+        LazyVerticalGrid(
+            modifier = Modifier.weight(1f),
+            columns = GridCells.Adaptive(minSize = 150.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            items(filteredApps) { app ->
+                InstalledAppTile(app = app, launchApp = launchApp)
+            }
         }
     }
 }
 
 @Composable
-fun AppTile(app: LauncherApp, launchApp: (String) -> Unit) {
-    Card(
-        onClick = { launchApp(app.packageName) },
-        colors = CardDefaults.cardColors(containerColor = Color(0xC210122B)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-        shape = RoundedCornerShape(18.dp),
+fun SettingsScreen(
+    serverUrl: String,
+    serverPin: String,
+    onServerUrlChange: (String) -> Unit,
+    onServerPinChange: (String) -> Unit,
+    openHomeSettings: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp, vertical = 34.dp)
+            .padding(bottom = 86.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ScreenTitle(kicker = "TONEOS", title = "Settings")
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xB810122B),
+            shape = RoundedCornerShape(26.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF7ED957), Color(0xFF55C8FF), Color(0xFF6957FF)))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(app.label.firstOrNull()?.uppercase() ?: "A", color = Color.White, fontWeight = FontWeight.Black)
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("MediaCenter", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                PillTextField(value = serverUrl, onValueChange = onServerUrlChange, label = "ToneOS server URL")
+                PillTextField(
+                    value = serverPin,
+                    onValueChange = onServerPinChange,
+                    label = "PIN",
+                    password = true,
+                )
             }
-            Text(app.label, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xB810122B),
+            shape = RoundedCornerShape(26.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        ) {
+            Row(
+                modifier = Modifier.padding(18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text("Launcher", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Default home app", color = Color.White.copy(alpha = 0.66f), fontSize = 14.sp)
+                }
+                Button(
+                    onClick = openHomeSettings,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text("Choose", color = Color(0xFF11152A), fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ServerSetupScreen(
+    title: String,
+    serverUrl: String,
+    serverPin: String,
+    onServerUrlChange: (String) -> Unit,
+    onServerPinChange: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp, vertical = 34.dp)
+            .padding(bottom = 86.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ScreenTitle(kicker = "MEDIACENTER", title = title)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xB810122B),
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        ) {
+            Row(
+                modifier = Modifier.padding(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppIcon(initials = "MC", colors = toneApps.first().colors, size = 96)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Connect to ToneOS", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                    PillTextField(value = serverUrl, onValueChange = onServerUrlChange, label = "Server URL")
+                    PillTextField(
+                        value = serverPin,
+                        onValueChange = onServerPinChange,
+                        label = "PIN",
+                        password = true,
+                    )
+                }
+            }
         }
     }
 }
@@ -349,7 +733,7 @@ fun RemoteScreen(
     status: String,
     onServerUrlChange: (String) -> Unit,
     onServerPinChange: (String) -> Unit,
-    onCommand: (String) -> Unit,
+    onCommand: (Pair<String, String>) -> Unit,
 ) {
     val commands = listOf(
         "home" to "Home",
@@ -366,31 +750,24 @@ fun RemoteScreen(
         "close-active" to "Close Active",
     )
 
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp, vertical = 34.dp)
+            .padding(bottom = 86.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ScreenTitle(kicker = "TONEOS", title = "PC Remote")
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color(0xB810122B),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
         ) {
             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("ToneOS PC Remote", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
                 Text(status, color = Color.White.copy(alpha = 0.72f))
-                OutlinedTextField(
-                    value = serverUrl,
-                    onValueChange = onServerUrlChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("ToneOS server URL") },
-                    placeholder = { Text("http://192.168.1.50:8096") },
-                )
-                OutlinedTextField(
-                    value = serverPin,
-                    onValueChange = onServerPinChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("PIN / password") },
-                )
+                PillTextField(value = serverUrl, onValueChange = onServerUrlChange, label = "ToneOS server URL")
+                PillTextField(value = serverPin, onValueChange = onServerPinChange, label = "PIN", password = true)
             }
         }
 
@@ -402,15 +779,42 @@ fun RemoteScreen(
         ) {
             items(commands) { command ->
                 Button(
-                    onClick = { onCommand(command.first) },
+                    onClick = { onCommand(command) },
                     modifier = Modifier.height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xD8151836)),
+                    shape = RoundedCornerShape(999.dp),
                 ) {
-                    Text(command.second, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(command.second, color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
+}
+
+@Composable
+fun ScreenTitle(kicker: String, title: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(kicker, color = Color.White.copy(alpha = 0.72f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun PillTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    password: Boolean = false,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text(label) },
+        shape = RoundedCornerShape(999.dp),
+        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+    )
 }
 
 suspend fun postRemoteCommand(serverUrl: String, pin: String, command: String): String = withContext(Dispatchers.IO) {

@@ -1,6 +1,6 @@
 # ToneOS Android Launcher
 
-This is the first native Android client for ToneOS. It is separate from the Electron desktop app and is meant for Android phones, tablets, and Android TV devices.
+This is the native Android shell for ToneOS. It mirrors the desktop ToneOS layout with the wallpaper, bottom taskbar, app drawer, Android apps, PC remote controls, and a MediaCenter client for watching media served by the home theater PC.
 
 ## Build
 
@@ -27,3 +27,23 @@ The `PC Remote` screen controls ToneOS on the PC through the ToneOS Media Server
 5. Enter that URL and PIN in the Android launcher.
 
 Remote control stays protected by the Media Server same-network and PIN settings.
+
+## MediaCenter Client
+
+Open `Settings` in the launcher and enter the ToneOS Media Server URL shown on the PC, such as `http://192.168.1.50:8096`. Opening `MediaCenter` loads the server client inside the launcher so movies and TV shows can direct-play from the home theater PC when the device supports the file format.
+
+## Updating Without USB
+
+Android will not let a sideloaded app silently update itself like a desktop app unless it is installed through a managed store, device-owner setup, or system image. The practical no-cable options are:
+
+1. Transfer the new `app-debug.apk` to the device and tap it to update.
+2. Use Android 11+ `Wireless debugging` and install with `adb install -r` over Wi-Fi.
+3. Later, add a ToneOS updater screen that downloads a release APK and opens Android's installer prompt.
+
+For wireless ADB:
+
+```bash
+adb pair DEVICE_IP:PAIRING_PORT
+adb connect DEVICE_IP:DEBUG_PORT
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
