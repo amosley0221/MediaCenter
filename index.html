@@ -268,6 +268,41 @@
             </div>
           </section>
         </div>
+      </section>
+
+      <section class="app-window browser-window" id="browserWindow" aria-label="Browser window" hidden>
+        <div class="window-hotspot" aria-label="Window controls">
+          <div class="window-controls">
+            <button class="window-control control-minimize" type="button" data-action="minimize" aria-label="Minimize">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 12h10" />
+              </svg>
+            </button>
+            <button class="window-control control-fullscreen" type="button" data-action="fullscreen" aria-label="Full screen">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 4H4v4" />
+                <path d="M16 4h4v4" />
+                <path d="M20 16v4h-4" />
+                <path d="M4 16v4h4" />
+              </svg>
+            </button>
+            <button class="window-control control-close" type="button" data-action="close" aria-label="Close">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 7l10 10" />
+                <path d="M17 7 7 17" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="window-dragbar" aria-hidden="true"></div>
+        <div class="resize-handle resize-n" data-resize="n" aria-hidden="true"></div>
+        <div class="resize-handle resize-e" data-resize="e" aria-hidden="true"></div>
+        <div class="resize-handle resize-s" data-resize="s" aria-hidden="true"></div>
+        <div class="resize-handle resize-w" data-resize="w" aria-hidden="true"></div>
+        <div class="resize-handle resize-ne" data-resize="ne" aria-hidden="true"></div>
+        <div class="resize-handle resize-se" data-resize="se" aria-hidden="true"></div>
+        <div class="resize-handle resize-sw" data-resize="sw" aria-hidden="true"></div>
+        <div class="resize-handle resize-nw" data-resize="nw" aria-hidden="true"></div>
 
         <div class="app-content browser-app" id="browserApp" hidden>
           <header class="browser-toolbar" aria-label="Browser controls">
@@ -290,6 +325,7 @@
                   </svg>
                 </button>
               </form>
+              <div class="browser-tabs" id="browserTabs" aria-label="Browser tabs"></div>
             </div>
             <div class="browser-action-peek" aria-label="Browser shortcuts">
               <span class="browser-edge-trigger browser-action-edge" aria-hidden="true"></span>
@@ -385,8 +421,43 @@
             </div>
           </section>
         </div>
+      </section>
 
-        <div class="app-content settings-app" id="settingsApp" hidden>
+      <section class="app-window settings-window is-floating" id="settingsWindow" aria-label="Settings window" hidden>
+        <div class="window-hotspot" aria-label="Window controls">
+          <div class="window-controls">
+            <button class="window-control control-minimize" type="button" data-action="minimize" aria-label="Minimize">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 12h10" />
+              </svg>
+            </button>
+            <button class="window-control control-fullscreen" type="button" data-action="fullscreen" aria-label="Full screen">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 4H4v4" />
+                <path d="M16 4h4v4" />
+                <path d="M20 16v4h-4" />
+                <path d="M4 16v4h4" />
+              </svg>
+            </button>
+            <button class="window-control control-close" type="button" data-action="close" aria-label="Close">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 7l10 10" />
+                <path d="M17 7 7 17" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="window-dragbar" aria-hidden="true"></div>
+        <div class="resize-handle resize-n" data-resize="n" aria-hidden="true"></div>
+        <div class="resize-handle resize-e" data-resize="e" aria-hidden="true"></div>
+        <div class="resize-handle resize-s" data-resize="s" aria-hidden="true"></div>
+        <div class="resize-handle resize-w" data-resize="w" aria-hidden="true"></div>
+        <div class="resize-handle resize-ne" data-resize="ne" aria-hidden="true"></div>
+        <div class="resize-handle resize-se" data-resize="se" aria-hidden="true"></div>
+        <div class="resize-handle resize-sw" data-resize="sw" aria-hidden="true"></div>
+        <div class="resize-handle resize-nw" data-resize="nw" aria-hidden="true"></div>
+
+        <div class="app-content settings-app" id="settingsApp">
           <header class="settings-header">
             <div>
               <p class="app-kicker">Settings</p>
@@ -708,6 +779,25 @@
       </p>
 
       <section
+        class="end-process-dialog"
+        id="endProcessDialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="endProcessTitle"
+        hidden
+      >
+        <div class="end-process-card">
+          <p class="app-kicker">Task Manager</p>
+          <h2 id="endProcessTitle">End Process?</h2>
+          <p id="endProcessMessage">This will fully close the selected window.</p>
+          <div class="end-process-actions">
+            <button type="button" id="cancelEndProcess">Cancel</button>
+            <button type="button" class="danger" id="confirmEndProcess">End Process</button>
+          </div>
+        </div>
+      </section>
+
+      <section
         class="task-switcher"
         id="taskSwitcher"
         aria-label="Open windows"
@@ -715,7 +805,7 @@
         hidden
       >
         <div class="task-switcher-header">
-          <span>Open Windows</span>
+          <span>Task Manager</span>
         </div>
         <div class="task-list" id="taskList"></div>
         <p class="task-empty" id="taskEmpty">No open windows</p>

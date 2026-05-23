@@ -19,6 +19,9 @@ const appViews = {
   settings: document.querySelector("#settingsApp"),
 };
 const browserApp = appViews.browser;
+const browserWindow = document.querySelector("#browserWindow");
+const settingsWindow = document.querySelector("#settingsWindow");
+const processWindows = [appWindow, browserWindow, settingsWindow].filter(Boolean);
 const mediaSearch = document.querySelector("#mediaSearch");
 const mediaSearchInput = document.querySelector("#mediaSearchInput");
 const addMediaButton = document.querySelector("#addMediaButton");
@@ -33,6 +36,7 @@ const mediaTabs = [...document.querySelectorAll(".media-tab")];
 const mediaHeroPrimaryButton = mediaHero.querySelector(".hero-actions button:first-child");
 const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
+const browserTabsList = document.querySelector("#browserTabs");
 const browserUrlPeek = document.querySelector(".browser-url-peek");
 const browserActionPeek = document.querySelector(".browser-action-peek");
 const browserUrlEdge = document.querySelector(".browser-url-edge");
@@ -50,8 +54,12 @@ const browserExternalLink = document.querySelector("#browserExternalLink");
 const browserFallback = document.querySelector("#browserFallback");
 const browserOpenLive = document.querySelector("#browserOpenLive");
 const windowControls = [...document.querySelectorAll(".window-control")];
-const windowDragbar = document.querySelector("#windowDragbar");
+const windowDragbars = [...document.querySelectorAll(".window-dragbar")];
 const resizeHandles = [...document.querySelectorAll(".resize-handle")];
+const endProcessDialog = document.querySelector("#endProcessDialog");
+const endProcessMessage = document.querySelector("#endProcessMessage");
+const cancelEndProcess = document.querySelector("#cancelEndProcess");
+const confirmEndProcess = document.querySelector("#confirmEndProcess");
 const settingsCards = [...document.querySelectorAll(".settings-card")];
 const settingsPanels = [...document.querySelectorAll(".settings-section")];
 const settingsForm = document.querySelector("#settingsForm");
@@ -69,6 +77,8 @@ const MIN_WINDOW_HEIGHT = 360;
 const WINDOW_MARGIN = 8;
 const BROWSER_EDGE_REVEAL_PX = 6;
 const BROWSER_CHROME_HIDE_DELAY_MS = 140;
+const DEFAULT_FLOATING_WINDOW_WIDTH = 980;
+const DEFAULT_FLOATING_WINDOW_HEIGHT = 620;
 const DEFAULT_BROWSER_HOME = "https://example.com";
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
 const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
@@ -798,11 +808,14 @@ let lastOpenedApp = null;
 let activeWindowInteraction = null;
 let browserFallbackTimer = null;
 let browserChromeHideTimer = null;
+let windowZIndex = 5;
+let pendingEndProcessKey = null;
 let activeTvSeriesTitle = "Foundation";
 let activeTvSeasonIndex = 1;
 let currentMediaSection = "home";
 let openWindowRecords = [];
 let activeWindowKey = null;
+let windowStates = {};
 let taskSwitcherPinned = false;
 let taskSwitcherCloseTimer = null;
 let mediaSources = getInitialMediaSources();
@@ -810,6 +823,16 @@ let desktopLibrary = null;
 let appSettings = mergeAppSettings();
 let browserHomeUrl = loadBrowserHome();
 let browserAddressSelectMode = "ready";
+let browserTabCounter = 1;
+let activeBrowserTabId = "tab-1";
+let browserTabs = [
+  {
+    id: activeBrowserTabId,
+    title: "Home",
+    url: browserHomeUrl || DEFAULT_BROWSER_HOME,
+  },
+];
+let browserIsTerminating = false;
 
 function canUseDesktopBridge() {
   return Boolean(desktopBridge?.isElectron);
@@ -1408,6 +1431,116 @@ function updateFocusReadout(title, description) {
   focusReadout.querySelector("span").textContent = description;
 }
 
+function getProcessWindow(key) {
+  if (key === "browser") {
+    return browserWindow;
+  }
+
+  return key === "settings" ? settingsWindow : appWindow;
+}
+
+function getWindowProcessKey(processWindow) {
+  if (processWindow === browserWindow) {
+    return "browser";
+  }
+
+  if (processWindow === settingsWindow) {
+    return "settings";
+  }
+
+  return appWindow.dataset.windowKey || activeWindowKey;
+}
+
+function getWindowState(processWindow) {
+  if (!processWindow || processWindow.hidden) {
+    return null;
+  }
+
+  const rect = processWindow.getBoundingClientRect();
+
+  return {
+    geometry: {
+      height: rect.height,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+    },
+    mode: processWindow.classList.contains("is-fullscreen") ? "fullscreen" : "floating",
+  };
+}
+
+function saveWindowStateForKey(key, processWindow = getProcessWindow(key)) {
+  const state = getWindowState(processWindow);
+
+  if (key && state) {
+    windowStates[key] = state;
+  }
+}
+
+function getDefaultFloatingGeometry(width = DEFAULT_FLOATING_WINDOW_WIDTH, height = DEFAULT_FLOATING_WINDOW_HEIGHT) {
+  const safeWidth = Math.min(width, window.innerWidth - WINDOW_MARGIN * 2);
+  const safeHeight = Math.min(height, window.innerHeight - WINDOW_MARGIN * 2);
+
+  return {
+    height: safeHeight,
+    left: Math.max(WINDOW_MARGIN, (window.innerWidth - safeWidth) / 2),
+    top: Math.max(WINDOW_MARGIN, (window.innerHeight - safeHeight) / 2),
+    width: safeWidth,
+  };
+}
+
+function applyWindowState(processWindow, state, defaultFullscreen = true) {
+  processWindow.classList.remove("is-minimized", "is-dragging", "is-resizing");
+
+  if (state?.mode === "floating" || !defaultFullscreen) {
+    const geometry = state?.geometry || getDefaultFloatingGeometry();
+
+    processWindow.classList.remove("is-fullscreen");
+    processWindow.classList.add("is-floating");
+    processWindow.style.left = `${Math.round(geometry.left)}px`;
+    processWindow.style.top = `${Math.round(geometry.top)}px`;
+    processWindow.style.width = `${Math.round(geometry.width)}px`;
+    processWindow.style.height = `${Math.round(geometry.height)}px`;
+    return;
+  }
+
+  processWindow.classList.remove("is-floating");
+  processWindow.classList.add("is-fullscreen");
+  processWindow.style.left = "";
+  processWindow.style.top = "";
+  processWindow.style.width = "";
+  processWindow.style.height = "";
+}
+
+function focusProcessWindow(processWindow, key = getWindowProcessKey(processWindow)) {
+  if (!processWindow || processWindow.hidden) {
+    return;
+  }
+
+  windowZIndex += 1;
+  processWindow.style.zIndex = String(windowZIndex);
+  activeWindowKey = key || activeWindowKey;
+  updateTaskButtonState();
+
+  if (!taskSwitcher.hidden) {
+    renderTaskSwitcher();
+  }
+}
+
+function isAnyFullscreenProcessVisible() {
+  return processWindows.some((processWindow) => {
+    return (
+      !processWindow.hidden &&
+      !processWindow.classList.contains("is-minimized") &&
+      processWindow.classList.contains("is-fullscreen")
+    );
+  });
+}
+
+function updateFullscreenShell() {
+  setFullscreenShell(isAnyFullscreenProcessVisible());
+}
+
 function setActiveLauncherItem(item) {
   launchTiles.forEach((tile) => tile.classList.toggle("active", tile === item));
   settingsButton?.classList.toggle("active", settingsButton === item);
@@ -1429,9 +1562,9 @@ function setDrawerOpen(isOpen) {
 }
 
 function showAppView(viewName) {
-  Object.entries(appViews).forEach(([name, view]) => {
-    view.hidden = name !== viewName;
-  });
+  if (viewName === "browser") {
+    browserApp.hidden = false;
+  }
 
   if (viewName !== "browser") {
     browserApp.classList.remove("show-browser-url", "show-browser-actions");
@@ -1564,7 +1697,7 @@ function renderTaskSwitcher() {
     const closeButton = document.createElement("button");
 
     item.className = "task-item";
-    item.classList.toggle("active", record.key === activeWindowKey && !appWindow.hidden);
+    item.classList.toggle("active", record.key === activeWindowKey && !getProcessWindow(record.key)?.hidden);
     openButton.className = "task-open";
     openButton.type = "button";
     openButton.setAttribute("aria-label", `Open ${meta.title}`);
@@ -1573,7 +1706,7 @@ function renderTaskSwitcher() {
     detail.textContent = meta.detail;
     closeButton.className = "task-close";
     closeButton.type = "button";
-    closeButton.setAttribute("aria-label", `Close ${meta.title}`);
+    closeButton.setAttribute("aria-label", `End ${meta.title} process`);
     closeButton.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10" /><path d="M17 7 7 17" /></svg>';
 
@@ -1589,7 +1722,7 @@ function renderTaskSwitcher() {
 
     closeButton.addEventListener("click", (event) => {
       event.stopPropagation();
-      closeWindowRecord(record.key);
+      requestEndWindowRecord(record.key);
     });
   });
 }
@@ -1623,7 +1756,8 @@ function scheduleTaskSwitcherClose() {
 
 function registerOpenWindow(record) {
   const key = getWindowKey(record);
-  const nextRecord = { ...record, key };
+  const existingRecord = openWindowRecords.find((item) => item.key === key);
+  const nextRecord = { ...existingRecord, ...record, key };
   const existingIndex = openWindowRecords.findIndex((item) => item.key === key);
 
   if (existingIndex >= 0) {
@@ -1641,7 +1775,7 @@ function registerOpenWindow(record) {
 
 function openWindowRecord(record) {
   if (record.type === "browser") {
-    openBrowser(record.target || getBrowserHome());
+    openBrowser(record.target || getActiveBrowserTab()?.url || getBrowserHome(), { preserveState: true });
     return;
   }
 
@@ -1653,36 +1787,93 @@ function openWindowRecord(record) {
   openMediaCenter(record.section || "home");
 }
 
-function hideAppWindow() {
-  appWindow.hidden = true;
-  browserApp.classList.remove("show-browser-url", "show-browser-actions");
-  resetWindowGeometry();
-  appWindow.classList.remove("controls-visible", "is-minimized", "is-fullscreen");
-  setFullscreenShell(false);
+function hideProcessWindow(processWindow) {
+  const key = getWindowProcessKey(processWindow);
+
+  saveWindowStateForKey(key, processWindow);
+  processWindow.hidden = true;
+  processWindow.classList.remove("controls-visible", "is-minimized", "is-dragging", "is-resizing");
+
+  if (processWindow === browserWindow) {
+    browserApp.classList.remove("show-browser-url", "show-browser-actions");
+  }
+
+  resetWindowGeometry(processWindow);
+
+  updateFullscreenShell();
   updateTaskButtonState();
 }
 
-function closeWindowRecord(key) {
+function hideAppWindow() {
+  hideProcessWindow(appWindow);
+}
+
+function terminateBrowserProcess() {
+  browserIsTerminating = true;
+  window.clearTimeout(browserFallbackTimer);
+  setBrowserSettingsOpen(false);
+  setBrowserFallbackVisible(false);
+  browserFrame.src = "about:blank";
+  browserFrame.dataset.fallbackMode = "false";
+
+  if (browserWebview) {
+    try {
+      browserWebview.stop?.();
+    } catch {
+      // Some webview states do not expose stop; about:blank still tears down playback.
+    }
+
+    browserWebview.src = "about:blank";
+  }
+
+  browserAddress.value = getBrowserHome();
+  browserExternalLink.href = getBrowserHome();
+  browserTabs = [createBrowserTab(getBrowserHome(), "Home")];
+  activeBrowserTabId = browserTabs[0].id;
+  renderBrowserTabs();
+  browserIsTerminating = false;
+}
+
+function endWindowRecord(key) {
   const closingActiveWindow = key === activeWindowKey;
   openWindowRecords = openWindowRecords.filter((record) => record.key !== key);
+
+  if (key === "browser") {
+    terminateBrowserProcess();
+  }
+
+  hideProcessWindow(getProcessWindow(key));
+  delete windowStates[key];
 
   if (closingActiveWindow) {
     activeWindowKey = null;
     lastOpenedApp = openWindowRecords[0] || null;
-    hideAppWindow();
   }
 
   updateTaskButtonState();
   renderTaskSwitcher();
 }
 
+function requestEndWindowRecord(key) {
+  const record = openWindowRecords.find((item) => item.key === key);
+  const meta = record ? getWindowMeta(record) : { title: "Window" };
+
+  pendingEndProcessKey = key;
+  endProcessMessage.textContent =
+    key === "browser"
+      ? "This will fully end Browser and stop any video or audio playing in the background."
+      : `This will fully close ${meta.title}.`;
+  endProcessDialog.hidden = false;
+  confirmEndProcess.focus({ preventScroll: true });
+}
+
 function closeActiveWindow() {
   if (activeWindowKey) {
-    closeWindowRecord(activeWindowKey);
+    requestEndWindowRecord(activeWindowKey);
     return;
   }
 
-  hideAppWindow();
+  requestEndWindowRecord(getWindowProcessKey(appWindow));
 }
 
 function getMediaSection(section) {
@@ -2313,12 +2504,12 @@ function renderMediaCenter(focusSection = "home") {
   );
 }
 
-function openFullscreenApp() {
-  appWindow.hidden = false;
-  resetWindowGeometry();
-  appWindow.classList.remove("is-minimized");
-  appWindow.classList.add("is-fullscreen");
-  setFullscreenShell(true);
+function openProcessWindow(processWindow, key, { defaultFullscreen = true } = {}) {
+  processWindow.hidden = false;
+  processWindow.dataset.windowKey = key;
+  applyWindowState(processWindow, windowStates[key], defaultFullscreen);
+  focusProcessWindow(processWindow, key);
+  updateFullscreenShell();
   updateTaskButtonState();
   setDrawerOpen(false);
 }
@@ -2328,7 +2519,7 @@ function openMediaCenter(section = "home") {
   registerOpenWindow(lastOpenedApp);
   showAppView("media");
   renderMediaCenter(section);
-  openFullscreenApp();
+  openProcessWindow(appWindow, getWindowKey(lastOpenedApp), { defaultFullscreen: true });
 }
 
 function getBrowserUrl(value) {
@@ -2379,6 +2570,108 @@ function getBrowserCurrentUrl() {
   }
 
   return browserExternalLink.href || getBrowserHome();
+}
+
+function createBrowserTab(url = getBrowserHome(), title = "New Tab") {
+  browserTabCounter += 1;
+
+  return {
+    id: `tab-${browserTabCounter}`,
+    title,
+    url,
+  };
+}
+
+function getActiveBrowserTab() {
+  return browserTabs.find((tab) => tab.id === activeBrowserTabId) || browserTabs[0] || null;
+}
+
+function updateActiveBrowserTab(patch = {}) {
+  const activeTab = getActiveBrowserTab();
+
+  if (!activeTab) {
+    return;
+  }
+
+  Object.assign(activeTab, patch);
+  renderBrowserTabs();
+}
+
+function renderBrowserTabs() {
+  browserTabsList.replaceChildren();
+
+  browserTabs.forEach((tab) => {
+    const tabButton = document.createElement("button");
+    const label = document.createElement("span");
+    const closeButton = document.createElement("span");
+
+    tabButton.type = "button";
+    tabButton.className = "browser-tab";
+    tabButton.classList.toggle("active", tab.id === activeBrowserTabId);
+    tabButton.dataset.tabId = tab.id;
+    tabButton.setAttribute("aria-label", `Open ${tab.title || tab.url}`);
+    label.textContent = tab.title || getBrowserHost(tab.url) || "New Tab";
+    closeButton.className = "browser-tab-close";
+    closeButton.textContent = "x";
+    closeButton.setAttribute("aria-hidden", "true");
+    tabButton.append(label, closeButton);
+    browserTabsList.append(tabButton);
+
+    tabButton.addEventListener("click", (event) => {
+      const closeClicked = event.target === closeButton;
+
+      if (closeClicked) {
+        closeBrowserTab(tab.id);
+        return;
+      }
+
+      switchBrowserTab(tab.id);
+    });
+  });
+
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "browser-tab browser-tab-add";
+  addButton.setAttribute("aria-label", "New tab");
+  addButton.textContent = "+";
+  addButton.addEventListener("click", () => {
+    const nextTab = createBrowserTab(getBrowserHome(), "New Tab");
+    browserTabs.push(nextTab);
+    activeBrowserTabId = nextTab.id;
+    renderBrowserTabs();
+    navigateBrowser(nextTab.url, { updateTab: true });
+  });
+  browserTabsList.append(addButton);
+}
+
+function switchBrowserTab(tabId) {
+  const tab = browserTabs.find((item) => item.id === tabId);
+
+  if (!tab) {
+    return;
+  }
+
+  activeBrowserTabId = tab.id;
+  renderBrowserTabs();
+  navigateBrowser(tab.url, { updateTab: false });
+}
+
+function closeBrowserTab(tabId) {
+  if (browserTabs.length === 1) {
+    requestEndWindowRecord("browser");
+    return;
+  }
+
+  const closingIndex = browserTabs.findIndex((tab) => tab.id === tabId);
+  browserTabs = browserTabs.filter((tab) => tab.id !== tabId);
+
+  if (tabId === activeBrowserTabId) {
+    const nextTab = browserTabs[Math.max(0, closingIndex - 1)] || browserTabs[0];
+    activeBrowserTabId = nextTab.id;
+    navigateBrowser(nextTab.url, { updateTab: false });
+  }
+
+  renderBrowserTabs();
 }
 
 function setBrowserSettingsOpen(isOpen) {
@@ -2436,7 +2729,7 @@ function scheduleBrowserChromeHide() {
 }
 
 function updateBrowserChromePeek(event) {
-  if (appWindow.hidden || browserApp.hidden) {
+  if (browserWindow.hidden || browserApp.hidden) {
     setBrowserChromePeek("url", false);
     setBrowserChromePeek("actions", false);
     return;
@@ -2517,7 +2810,7 @@ function setActiveBrowserSurface(url, shouldFallback) {
   browserFrame.src = shouldFallback ? "about:blank" : url;
 }
 
-function navigateBrowser(value) {
+function navigateBrowser(value, { createTab = false, updateTab = true } = {}) {
   const entry = value.trim() || getBrowserHome();
   const url = getBrowserUrl(entry);
   const shouldFallback = isKnownBlockedEmbed(url);
@@ -2528,6 +2821,16 @@ function navigateBrowser(value) {
   browserExternalLink.href = url;
   lastOpenedApp = { type: "browser", target: entry };
 
+  if (createTab) {
+    const nextTab = createBrowserTab(url, getBrowserHost(url) || "New Tab");
+    browserTabs.push(nextTab);
+    activeBrowserTabId = nextTab.id;
+  } else if (updateTab) {
+    updateActiveBrowserTab({ title: getBrowserHost(url) || "New Tab", url });
+  }
+
+  renderBrowserTabs();
+
   if (openWindowRecords.some((record) => record.key === "browser")) {
     registerOpenWindow(lastOpenedApp);
   }
@@ -2535,18 +2838,18 @@ function navigateBrowser(value) {
   setActiveBrowserSurface(url, shouldFallback);
 }
 
-function openBrowser(target = browserAddress.value || getBrowserHome()) {
+function openBrowser(target = browserAddress.value || getBrowserHome(), { preserveState = false } = {}) {
   showAppView("browser");
-  navigateBrowser(target);
+  navigateBrowser(target, { createTab: !preserveState });
   registerOpenWindow(lastOpenedApp);
-  openFullscreenApp();
+  openProcessWindow(browserWindow, "browser", { defaultFullscreen: true });
 }
 
 function openSettings() {
   lastOpenedApp = { type: "settings" };
   registerOpenWindow(lastOpenedApp);
-  showAppView("settings");
-  openFullscreenApp();
+  settingsApp.hidden = false;
+  openProcessWindow(settingsWindow, "settings", { defaultFullscreen: false });
 }
 
 function openAppFromTile(tile) {
@@ -2560,13 +2863,14 @@ function openAppFromTile(tile) {
   openMediaCenter(tile.dataset.section || "home");
 }
 
-function minimizeApp() {
-  if (appWindow.hidden) {
+function minimizeApp(processWindow = getProcessWindow(activeWindowKey)) {
+  if (!processWindow || processWindow.hidden) {
     return;
   }
 
-  appWindow.classList.add("is-minimized");
-  setFullscreenShell(false);
+  saveWindowStateForKey(getWindowProcessKey(processWindow), processWindow);
+  processWindow.classList.add("is-minimized");
+  updateFullscreenShell();
   updateTaskButtonState();
 }
 
@@ -2580,18 +2884,25 @@ function restoreApp() {
     return;
   }
 
-  if (appWindow.hidden) {
+  const processWindow = getProcessWindow(record.key);
+
+  if (processWindow.hidden) {
     openWindowRecord(record);
     return;
   }
 
-  appWindow.classList.remove("is-minimized");
-  setFullscreenShell(appWindow.classList.contains("is-fullscreen"));
+  processWindow.classList.remove("is-minimized");
+  focusProcessWindow(processWindow, record.key);
+  updateFullscreenShell();
   updateTaskButtonState();
 }
 
 function closeApp() {
-  hideAppWindow();
+  processWindows.forEach((processWindow) => {
+    if (!processWindow.hidden) {
+      hideProcessWindow(processWindow);
+    }
+  });
 }
 
 function goHome() {
@@ -2628,24 +2939,24 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function resetWindowGeometry() {
-  appWindow.classList.remove("is-dragging", "is-floating", "is-resizing");
-  appWindow.style.left = "";
-  appWindow.style.top = "";
-  appWindow.style.width = "";
-  appWindow.style.height = "";
+function resetWindowGeometry(processWindow = appWindow) {
+  processWindow.classList.remove("is-dragging", "is-floating", "is-resizing");
+  processWindow.style.left = "";
+  processWindow.style.top = "";
+  processWindow.style.width = "";
+  processWindow.style.height = "";
 }
 
-function materializeWindowGeometry() {
-  const rect = appWindow.getBoundingClientRect();
+function materializeWindowGeometry(processWindow = appWindow) {
+  const rect = processWindow.getBoundingClientRect();
 
-  appWindow.classList.remove("is-fullscreen");
-  appWindow.classList.add("is-floating");
-  setFullscreenShell(false);
-  appWindow.style.left = `${Math.round(rect.left)}px`;
-  appWindow.style.top = `${Math.round(rect.top)}px`;
-  appWindow.style.width = `${Math.round(rect.width)}px`;
-  appWindow.style.height = `${Math.round(rect.height)}px`;
+  processWindow.classList.remove("is-fullscreen");
+  processWindow.classList.add("is-floating");
+  updateFullscreenShell();
+  processWindow.style.left = `${Math.round(rect.left)}px`;
+  processWindow.style.top = `${Math.round(rect.top)}px`;
+  processWindow.style.width = `${Math.round(rect.width)}px`;
+  processWindow.style.height = `${Math.round(rect.height)}px`;
 
   return {
     bottom: rect.bottom,
@@ -2657,11 +2968,11 @@ function materializeWindowGeometry() {
   };
 }
 
-function applyWindowGeometry({ left, top, width, height }) {
-  appWindow.style.left = `${Math.round(left)}px`;
-  appWindow.style.top = `${Math.round(top)}px`;
-  appWindow.style.width = `${Math.round(width)}px`;
-  appWindow.style.height = `${Math.round(height)}px`;
+function applyWindowGeometry(processWindow, { left, top, width, height }) {
+  processWindow.style.left = `${Math.round(left)}px`;
+  processWindow.style.top = `${Math.round(top)}px`;
+  processWindow.style.width = `${Math.round(width)}px`;
+  processWindow.style.height = `${Math.round(height)}px`;
 }
 
 function getDragGeometry(interaction, event) {
@@ -2734,23 +3045,25 @@ function getResizeGeometry(interaction, event) {
   return { height, left, top, width };
 }
 
-function startWindowInteraction(event, type, direction = "") {
-  if (event.button !== 0 || appWindow.hidden || appWindow.classList.contains("is-minimized")) {
+function startWindowInteraction(event, processWindow, type, direction = "") {
+  if (event.button !== 0 || processWindow.hidden || processWindow.classList.contains("is-minimized")) {
     return;
   }
 
   event.preventDefault();
+  focusProcessWindow(processWindow);
 
   activeWindowInteraction = {
     direction,
-    startRect: materializeWindowGeometry(),
+    processWindow,
+    startRect: materializeWindowGeometry(processWindow),
     startX: event.clientX,
     startY: event.clientY,
     type,
   };
 
-  appWindow.classList.toggle("is-dragging", type === "drag");
-  appWindow.classList.toggle("is-resizing", type === "resize");
+  processWindow.classList.toggle("is-dragging", type === "drag");
+  processWindow.classList.toggle("is-resizing", type === "resize");
 }
 
 function handleWindowPointerMove(event) {
@@ -2763,7 +3076,8 @@ function handleWindowPointerMove(event) {
       ? getDragGeometry(activeWindowInteraction, event)
       : getResizeGeometry(activeWindowInteraction, event);
 
-  applyWindowGeometry(nextGeometry);
+  applyWindowGeometry(activeWindowInteraction.processWindow, nextGeometry);
+  saveWindowStateForKey(getWindowProcessKey(activeWindowInteraction.processWindow), activeWindowInteraction.processWindow);
 }
 
 function endWindowInteraction() {
@@ -2771,23 +3085,28 @@ function endWindowInteraction() {
     return;
   }
 
+  const { processWindow } = activeWindowInteraction;
+
   activeWindowInteraction = null;
-  appWindow.classList.remove("is-dragging", "is-resizing");
+  processWindow.classList.remove("is-dragging", "is-resizing");
+  saveWindowStateForKey(getWindowProcessKey(processWindow), processWindow);
 }
 
 function updateWindowControlsVisibility(event) {
-  if (appWindow.hidden || appWindow.classList.contains("is-minimized")) {
+  const processWindow = event.currentTarget;
+
+  if (processWindow.hidden || processWindow.classList.contains("is-minimized")) {
     return;
   }
 
-  const bounds = appWindow.getBoundingClientRect();
+  const bounds = processWindow.getBoundingClientRect();
   const inHotspot =
     event.clientX >= bounds.left &&
     event.clientX <= bounds.left + 172 &&
     event.clientY >= bounds.top &&
     event.clientY <= bounds.top + 72;
 
-  appWindow.classList.toggle("controls-visible", inHotspot);
+  processWindow.classList.toggle("controls-visible", inHotspot);
 }
 
 drawerButton.addEventListener("click", () => {
@@ -2921,6 +3240,27 @@ openMediaServerClient?.addEventListener("click", async () => {
 
   const status = await desktopBridge.openMediaServerClient();
   renderMediaServerStatus(status);
+});
+
+cancelEndProcess.addEventListener("click", () => {
+  pendingEndProcessKey = null;
+  endProcessDialog.hidden = true;
+});
+
+confirmEndProcess.addEventListener("click", () => {
+  if (pendingEndProcessKey) {
+    endWindowRecord(pendingEndProcessKey);
+  }
+
+  pendingEndProcessKey = null;
+  endProcessDialog.hidden = true;
+});
+
+endProcessDialog.addEventListener("click", (event) => {
+  if (event.target === endProcessDialog) {
+    pendingEndProcessKey = null;
+    endProcessDialog.hidden = true;
+  }
 });
 
 settingsForm.addEventListener("input", () => {
@@ -3074,22 +3414,43 @@ sourceActionButtons.forEach((button) => {
 browserFrame.addEventListener("load", () => {
   window.clearTimeout(browserFallbackTimer);
 
+  if (browserIsTerminating || browserFrame.src === "about:blank") {
+    return;
+  }
+
   if (browserFrame.dataset.fallbackMode !== "true") {
     setBrowserFallbackVisible(false);
+    updateActiveBrowserTab({ url: browserFrame.src, title: getBrowserHost(browserFrame.src) || "Browser" });
   }
 });
 
 browserWebview.addEventListener("did-navigate", (event) => {
+  if (browserIsTerminating) {
+    return;
+  }
+
   browserAddress.value = event.url;
   browserExternalLink.href = event.url;
+  updateActiveBrowserTab({ url: event.url, title: getBrowserHost(event.url) || "Browser" });
 });
 
 browserWebview.addEventListener("did-navigate-in-page", (event) => {
+  if (browserIsTerminating) {
+    return;
+  }
+
   browserAddress.value = event.url;
   browserExternalLink.href = event.url;
+  updateActiveBrowserTab({ url: event.url, title: getBrowserHost(event.url) || "Browser" });
 });
 
-browserWebview.addEventListener("page-title-updated", () => {
+browserWebview.addEventListener("page-title-updated", (event) => {
+  if (browserIsTerminating) {
+    return;
+  }
+
+  updateActiveBrowserTab({ title: event.title || getBrowserHost(browserAddress.value) || "Browser" });
+
   if (openWindowRecords.some((record) => record.key === "browser")) {
     registerOpenWindow({ type: "browser", target: browserAddress.value });
   }
@@ -3116,40 +3477,49 @@ navButtons.forEach((button) => {
 windowControls.forEach((control) => {
   control.addEventListener("click", () => {
     const action = control.dataset.action;
+    const processWindow = control.closest(".app-window");
+    const processKey = getWindowProcessKey(processWindow);
+
+    focusProcessWindow(processWindow, processKey);
 
     if (action === "minimize") {
-      minimizeApp();
+      minimizeApp(processWindow);
     }
 
     if (action === "fullscreen") {
-      if (appWindow.classList.contains("is-fullscreen")) {
-        resetWindowGeometry();
-        appWindow.classList.remove("is-fullscreen");
-        setFullscreenShell(false);
+      if (processWindow.classList.contains("is-fullscreen")) {
+        const state = windowStates[processKey];
+        resetWindowGeometry(processWindow);
+        applyWindowState(processWindow, state?.mode === "floating" ? state : null, false);
       } else {
-        resetWindowGeometry();
-        appWindow.classList.add("is-fullscreen");
-        setFullscreenShell(true);
+        saveWindowStateForKey(processKey, processWindow);
+        resetWindowGeometry(processWindow);
+        processWindow.classList.add("is-fullscreen");
       }
+
+      saveWindowStateForKey(processKey, processWindow);
+      updateFullscreenShell();
     }
 
     if (action === "close") {
-      closeActiveWindow();
+      requestEndWindowRecord(processKey);
     }
   });
 });
 
-windowDragbar.addEventListener("pointerdown", (event) => {
-  if (event.target.closest(".window-control")) {
-    return;
-  }
+windowDragbars.forEach((dragbar) => {
+  dragbar.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".window-control")) {
+      return;
+    }
 
-  startWindowInteraction(event, "drag");
+    startWindowInteraction(event, dragbar.closest(".app-window"), "drag");
+  });
 });
 
 resizeHandles.forEach((handle) => {
   handle.addEventListener("pointerdown", (event) => {
-    startWindowInteraction(event, "resize", handle.dataset.resize);
+    startWindowInteraction(event, handle.closest(".app-window"), "resize", handle.dataset.resize);
   });
 });
 
@@ -3159,9 +3529,15 @@ window.addEventListener("pointermove", updateBrowserChromePeek);
 window.addEventListener("pointerup", endWindowInteraction);
 window.addEventListener("pointercancel", endWindowInteraction);
 
-appWindow.addEventListener("pointermove", updateWindowControlsVisibility);
-appWindow.addEventListener("pointerleave", () => {
-  appWindow.classList.remove("controls-visible");
+processWindows.forEach((processWindow) => {
+  processWindow.addEventListener("pointerdown", () => {
+    focusProcessWindow(processWindow);
+  });
+
+  processWindow.addEventListener("pointermove", updateWindowControlsVisibility);
+  processWindow.addEventListener("pointerleave", () => {
+    processWindow.classList.remove("controls-visible");
+  });
 });
 
 document.addEventListener("click", (event) => {
@@ -3181,6 +3557,12 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (!endProcessDialog.hidden) {
+      pendingEndProcessKey = null;
+      endProcessDialog.hidden = true;
+      return;
+    }
+
     if (!browserSettingsPanel.hidden) {
       setBrowserSettingsOpen(false);
       return;
@@ -3201,7 +3583,7 @@ document.addEventListener("keydown", (event) => {
       return;
     }
 
-    if (!appWindow.hidden) {
+    if (processWindows.some((processWindow) => !processWindow.hidden)) {
       closeApp();
       return;
     }
@@ -3299,6 +3681,7 @@ function applyStartupState() {
 }
 
 updateClock();
+renderBrowserTabs();
 setInterval(updateClock, 1000 * 15);
 applyStartupState();
 loadAppSettings();
