@@ -1173,6 +1173,7 @@ svg {
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 16px 30px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(14px);
+  overflow: visible;
 }
 
 .settings-section {
@@ -1270,9 +1271,189 @@ svg {
   box-shadow: 0 0 0 3px rgba(126, 217, 87, 0.16);
 }
 
+.setting-select-field {
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+.setting-select-field.is-open {
+  z-index: 24;
+}
+
+.tone-select-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 8px 6px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035)),
+    rgba(8, 8, 30, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 26px rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  text-align: left;
+}
+
+.tone-select-button:hover,
+.tone-select-button:focus-visible,
+.setting-select-field.is-open .tone-select-button {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.36);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
+    rgba(11, 12, 38, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 0 0 3px rgba(126, 217, 87, 0.14),
+    0 18px 32px rgba(0, 0, 0, 0.22);
+}
+
+.tone-select-value {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tone-select-chevron {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  transition: transform 160ms ease;
+}
+
+.tone-select-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+
+.setting-select-field.is-open .tone-select-chevron {
+  transform: rotate(180deg);
+}
+
+.tone-select-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 12px;
+  left: 12px;
+  z-index: 25;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(31, 31, 74, 0.96), rgba(10, 11, 33, 0.96)),
+    rgba(8, 8, 30, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 48px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(20px);
+}
+
+.tone-select-menu[hidden] {
+  display: none;
+}
+
+.tone-select-option {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 7px 10px;
+  border-radius: 16px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  text-align: left;
+}
+
+.tone-select-option:hover,
+.tone-select-option:focus-visible,
+.tone-select-option.is-selected {
+  outline: none;
+  background: rgba(255, 255, 255, 0.11);
+  color: #fff;
+}
+
+.tone-select-option.is-selected {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.tone-select-option-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tone-select-swatch {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 14px rgba(0, 0, 0, 0.18);
+}
+
+.swatch-default,
+.swatch-default-tone {
+  background: linear-gradient(135deg, #db61ae 0%, #5b75d8 48%, #38b7ee 100%);
+}
+
+.swatch-default-tone::after,
+.swatch-black-gold-tone::after {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.94);
+  content: "T";
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.swatch-black-gold,
+.swatch-black-gold-tone {
+  background: linear-gradient(135deg, #060606 0%, #2a1d08 54%, #d6a93b 100%);
+}
+
 .desktop.theme-black-gold .setting-field input:focus-visible,
 .desktop.theme-black-gold .setting-field select:focus-visible {
   box-shadow: 0 0 0 3px rgba(214, 169, 59, 0.18);
+}
+
+.desktop.theme-black-gold .tone-select-button:hover,
+.desktop.theme-black-gold .tone-select-button:focus-visible,
+.desktop.theme-black-gold .setting-select-field.is-open .tone-select-button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 0 0 3px rgba(214, 169, 59, 0.18),
+    0 18px 32px rgba(0, 0, 0, 0.22);
+}
+
+.desktop.theme-black-gold .tone-select-menu {
+  border-color: rgba(255, 207, 89, 0.18);
+  background:
+    linear-gradient(145deg, rgba(36, 28, 10, 0.97), rgba(6, 6, 6, 0.97)),
+    rgba(8, 7, 4, 0.94);
 }
 
 .desktop.theme-black-gold .settings-card:hover,

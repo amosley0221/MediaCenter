@@ -54,6 +54,7 @@ const settingsCards = [...document.querySelectorAll(".settings-card")];
 const settingsPanels = [...document.querySelectorAll(".settings-section")];
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
+const settingSelects = [...document.querySelectorAll("[data-setting-select]")];
 const desktopBridge = window.mediaCenterDesktop || null;
 
 const MIN_WINDOW_WIDTH = 520;
@@ -865,6 +866,80 @@ function populateSettingsForm(settings) {
 
     control.value = value ?? "";
   });
+
+  syncSettingSelects(settings);
+}
+
+function getSettingSelectLabel(option) {
+  return option?.querySelector(".tone-select-option-title")?.textContent?.trim() || option?.textContent?.trim() || "";
+}
+
+function setSettingSelectValue(selectRoot, value) {
+  const hiddenInput = selectRoot.querySelector('input[type="hidden"]');
+  const valueLabel = selectRoot.querySelector(".tone-select-value");
+  const options = [...selectRoot.querySelectorAll(".tone-select-option")];
+  const selectedOption = options.find((option) => option.dataset.value === value) || options[0];
+
+  if (!selectedOption) {
+    return;
+  }
+
+  if (hiddenInput) {
+    hiddenInput.value = selectedOption.dataset.value;
+  }
+
+  if (valueLabel) {
+    valueLabel.textContent = getSettingSelectLabel(selectedOption);
+  }
+
+  options.forEach((option) => {
+    const isSelected = option === selectedOption;
+    option.classList.toggle("is-selected", isSelected);
+    option.setAttribute("aria-selected", String(isSelected));
+  });
+}
+
+function syncSettingSelects(settings) {
+  settingSelects.forEach((selectRoot) => {
+    setSettingSelectValue(selectRoot, getSettingByPath(settings, selectRoot.dataset.settingSelect));
+  });
+}
+
+function closeSettingSelects(exceptRoot = null) {
+  settingSelects.forEach((selectRoot) => {
+    if (selectRoot === exceptRoot) {
+      return;
+    }
+
+    selectRoot.classList.remove("is-open");
+    selectRoot.querySelector(".tone-select-button")?.setAttribute("aria-expanded", "false");
+    const menu = selectRoot.querySelector(".tone-select-menu");
+    if (menu) {
+      menu.hidden = true;
+    }
+  });
+}
+
+function toggleSettingSelect(selectRoot) {
+  const isOpen = selectRoot.classList.contains("is-open");
+  const button = selectRoot.querySelector(".tone-select-button");
+  const menu = selectRoot.querySelector(".tone-select-menu");
+
+  closeSettingSelects(selectRoot);
+  selectRoot.classList.toggle("is-open", !isOpen);
+  button?.setAttribute("aria-expanded", String(!isOpen));
+
+  if (menu) {
+    menu.hidden = isOpen;
+  }
+}
+
+async function saveSettingSelectChoice(selectRoot, value) {
+  setSettingSelectValue(selectRoot, value);
+  closeSettingSelects();
+  setSettingsStatus("Saving appearance...");
+  await saveAppSettings(readSettingsForm(), "Appearance saved.");
+  selectRoot.querySelector(".tone-select-button")?.focus();
 }
 
 function readSettingsForm() {
@@ -933,7 +1008,7 @@ async function loadAppSettings() {
   }
 }
 
-async function saveAppSettings(settings) {
+async function saveAppSettings(settings, statusText = "Settings saved.") {
   applyAppSettings(settings);
 
   if (canUseDesktopBridge() && typeof desktopBridge.saveSettings === "function") {
@@ -946,7 +1021,7 @@ async function saveAppSettings(settings) {
   }
 
   populateSettingsForm(appSettings);
-  setSettingsStatus("Settings saved.");
+  setSettingsStatus(statusText);
 }
 
 function loadBrowserHome() {
@@ -2618,6 +2693,59 @@ settingsCards.forEach((card) => {
   card.addEventListener("click", () => {
     setSettingsSection(card.dataset.settingsSection);
   });
+});
+
+settingSelects.forEach((selectRoot) => {
+  const button = selectRoot.querySelector(".tone-select-button");
+
+  button?.addEventListener("click", () => {
+    toggleSettingSelect(selectRoot);
+  });
+
+  button?.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+      return;
+    }
+
+    event.preventDefault();
+    toggleSettingSelect(selectRoot);
+    const selectedOption = selectRoot.querySelector(".tone-select-option.is-selected");
+    selectedOption?.focus();
+  });
+
+  selectRoot.querySelectorAll(".tone-select-option").forEach((option) => {
+    option.addEventListener("click", () => {
+      saveSettingSelectChoice(selectRoot, option.dataset.value);
+    });
+
+    option.addEventListener("keydown", (event) => {
+      const options = [...selectRoot.querySelectorAll(".tone-select-option")];
+      const currentIndex = options.indexOf(option);
+      const nextIndex =
+        event.key === "ArrowDown"
+          ? Math.min(options.length - 1, currentIndex + 1)
+          : event.key === "ArrowUp"
+            ? Math.max(0, currentIndex - 1)
+            : -1;
+
+      if (nextIndex >= 0) {
+        event.preventDefault();
+        options[nextIndex].focus();
+      }
+    });
+  });
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest("[data-setting-select]")) {
+    closeSettingSelects();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeSettingSelects();
+  }
 });
 
 settingsForm.addEventListener("input", () => {

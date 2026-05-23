@@ -506,22 +506,70 @@
                 <h2>Themes</h2>
                 <span>Wallpaper and color system</span>
               </header>
-              <label class="setting-field">
-                <span>Theme</span>
-                <select name="appearance.theme">
-                  <option value="default">Default</option>
-                  <option value="blackGold">Black and gold</option>
-                </select>
-              </label>
-              <label class="setting-field">
-                <span>Wallpaper</span>
-                <select name="appearance.wallpaper">
-                  <option value="default">Default gradient</option>
-                  <option value="defaultTone">Default with ToneOS</option>
-                  <option value="blackGold">Black and gold</option>
-                  <option value="blackGoldTone">Black and gold with ToneOS</option>
-                </select>
-              </label>
+              <div class="setting-field setting-select-field" data-setting-select="appearance.theme">
+                <span id="themeSelectLabel">Theme</span>
+                <input type="hidden" name="appearance.theme" value="default" />
+                <button
+                  class="tone-select-button"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-labelledby="themeSelectLabel themeSelectValue"
+                >
+                  <span class="tone-select-value" id="themeSelectValue">Default</span>
+                  <span class="tone-select-chevron" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="m7 10 5 5 5-5" />
+                    </svg>
+                  </span>
+                </button>
+                <div class="tone-select-menu" role="listbox" aria-labelledby="themeSelectLabel" hidden>
+                  <button class="tone-select-option" type="button" role="option" data-value="default">
+                    <span class="tone-select-swatch swatch-default" aria-hidden="true"></span>
+                    <span class="tone-select-option-title">Default</span>
+                  </button>
+                  <button class="tone-select-option" type="button" role="option" data-value="blackGold">
+                    <span class="tone-select-swatch swatch-black-gold" aria-hidden="true"></span>
+                    <span class="tone-select-option-title">Black and gold</span>
+                  </button>
+                </div>
+              </div>
+              <div class="setting-field setting-select-field" data-setting-select="appearance.wallpaper">
+                <span id="wallpaperSelectLabel">Wallpaper</span>
+                <input type="hidden" name="appearance.wallpaper" value="default" />
+                <button
+                  class="tone-select-button"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-labelledby="wallpaperSelectLabel wallpaperSelectValue"
+                >
+                  <span class="tone-select-value" id="wallpaperSelectValue">Default gradient</span>
+                  <span class="tone-select-chevron" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="m7 10 5 5 5-5" />
+                    </svg>
+                  </span>
+                </button>
+                <div class="tone-select-menu" role="listbox" aria-labelledby="wallpaperSelectLabel" hidden>
+                  <button class="tone-select-option" type="button" role="option" data-value="default">
+                    <span class="tone-select-swatch swatch-default" aria-hidden="true"></span>
+                    <span class="tone-select-option-title">Default gradient</span>
+                  </button>
+                  <button class="tone-select-option" type="button" role="option" data-value="defaultTone">
+                    <span class="tone-select-swatch swatch-default-tone" aria-hidden="true"></span>
+                    <span class="tone-select-option-title">Default with ToneOS</span>
+                  </button>
+                  <button class="tone-select-option" type="button" role="option" data-value="blackGold">
+                    <span class="tone-select-swatch swatch-black-gold" aria-hidden="true"></span>
+                    <span class="tone-select-option-title">Black and gold</span>
+                  </button>
+                  <button class="tone-select-option" type="button" role="option" data-value="blackGoldTone">
+                    <span class="tone-select-swatch swatch-black-gold-tone" aria-hidden="true"></span>
+                    <span class="tone-select-option-title">Black and gold with ToneOS</span>
+                  </button>
+                </div>
+              </div>
             </section>
 
             <section class="settings-section" data-settings-panel="metadata" hidden>
