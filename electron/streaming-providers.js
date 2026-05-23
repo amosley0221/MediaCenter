@@ -417,6 +417,7 @@ function mapTwitchStream(stream) {
   const streamerName = cleanText(stream.user_name || stream.user_login || "Twitch");
   const streamTitle = compactText(stream.title, "Live stream");
   const category = cleanText(stream.game_name || "Twitch");
+  const viewerCount = Number(stream.viewer_count) || 0;
 
   return {
     brand: "twitch",
@@ -424,11 +425,25 @@ function mapTwitchStream(stream) {
       .replace("{width}", "440")
       .replace("{height}", "248"),
     creator: streamerName,
-    meta: `${streamTitle} | ${category} | ${formatViewers(stream.viewer_count)}`,
+    meta: `${streamTitle} | ${category} | ${formatViewers(viewerCount)}`,
     status: "Live",
     target: `https://www.twitch.tv/${stream.user_login}`,
     title: streamerName,
+    viewerCount,
   };
+}
+
+function sortTwitchStreams(streams, configuredChannelSet) {
+  return [...streams].sort((a, b) => {
+    const aIsSaved = configuredChannelSet.has(String(a.user_login || "").toLowerCase());
+    const bIsSaved = configuredChannelSet.has(String(b.user_login || "").toLowerCase());
+
+    if (aIsSaved !== bIsSaved) {
+      return aIsSaved ? -1 : 1;
+    }
+
+    return (Number(b.viewer_count) || 0) - (Number(a.viewer_count) || 0);
+  });
 }
 
 async function getTwitchUserId(login, settings, messages) {
@@ -474,6 +489,7 @@ async function loadTwitchData(settings = {}) {
   const configuredChannels = splitEntries(settings.twitchChannels)
     .map((entry) => entry.replace(/^@/, "").toLowerCase())
     .slice(0, 100);
+  const configuredChannelSet = new Set(configuredChannels);
   const liveChannels = [];
 
   if (settings.twitchUserLogin) {
@@ -502,14 +518,16 @@ async function loadTwitchData(settings = {}) {
     }
   }
 
-  const itemsByChannel = new Map();
-  liveChannels.map(mapTwitchStream).forEach((item) => {
-    const key = item.target.toLowerCase();
-    if (!itemsByChannel.has(key)) {
-      itemsByChannel.set(key, item);
+  const streamsByChannel = new Map();
+  liveChannels.forEach((stream) => {
+    const key = String(stream.user_login || "").toLowerCase();
+    const existingStream = streamsByChannel.get(key);
+
+    if (!existingStream || (Number(stream.viewer_count) || 0) > (Number(existingStream.viewer_count) || 0)) {
+      streamsByChannel.set(key, stream);
     }
   });
-  const liveItems = [...itemsByChannel.values()];
+  const liveItems = sortTwitchStreams([...streamsByChannel.values()], configuredChannelSet).map(mapTwitchStream);
 
   if (liveItems.length) {
     shelves.push({ title: "Twitch Live", items: liveItems.slice(0, 30), source: "streaming-provider" });
