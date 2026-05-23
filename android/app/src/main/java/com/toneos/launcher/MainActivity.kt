@@ -19,6 +19,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -149,9 +152,23 @@ class MainActivity : ComponentActivity() {
                 loadApps = { loadLaunchableApps() },
                 launchApp = { packageName -> launchPackage(packageName) },
                 openHomeSettings = { openHomeSettings() },
+                showNativeBars = { showSystemBars() },
+                hideNativeBars = { hideSystemBars() },
                 readPreference = { key -> prefs.getString(key, "") ?: "" },
                 writePreference = { key, value -> prefs.edit().putString(key, value).apply() },
             )
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemBars()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemBars()
         }
     }
 
@@ -207,6 +224,16 @@ class MainActivity : ComponentActivity() {
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
     }
+
+    private fun showSystemBars() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+            return
+        }
+
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+    }
 }
 
 @Composable
@@ -214,6 +241,8 @@ fun ToneOSLauncher(
     loadApps: () -> List<LauncherApp>,
     launchApp: (String) -> Unit,
     openHomeSettings: () -> Unit,
+    showNativeBars: () -> Unit,
+    hideNativeBars: () -> Unit,
     readPreference: (String) -> String,
     writePreference: (String, String) -> Unit,
 ) {
@@ -320,6 +349,13 @@ fun ToneOSLauncher(
                 null -> DesktopScreen(
                     theme = theme,
                     wallpaper = wallpaper,
+                    onNativeBarsRequest = {
+                        scope.launch {
+                            showNativeBars()
+                            delay(3500)
+                            hideNativeBars()
+                        }
+                    },
                 )
             }
 
@@ -659,8 +695,15 @@ fun OptionButton(label: String, selected: Boolean, onClick: () -> Unit, modifier
 fun DesktopScreen(
     theme: ToneTheme,
     wallpaper: ToneWallpaperOption,
+    onNativeBarsRequest: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { onNativeBarsRequest() })
+            },
+    ) {
         if (wallpaper == ToneWallpaperOption.Default && theme == ToneTheme.Default) {
             Spacer(modifier = Modifier.size(1.dp))
         }
