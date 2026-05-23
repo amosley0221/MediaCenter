@@ -1290,7 +1290,7 @@ svg {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 14px;
 }
 
@@ -1298,8 +1298,9 @@ svg {
   display: grid;
   align-content: start;
   gap: 12px;
+  min-width: 0;
   min-height: 132px;
-  padding: 18px;
+  padding: 20px 22px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(7, 8, 27, 0.52);
@@ -1322,7 +1323,9 @@ svg {
 
 .settings-card h2 {
   margin: 0;
-  font-size: clamp(20px, 2vw, 27px);
+  font-size: clamp(19px, 1.65vw, 24px);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
 }
 
 .settings-panel {
