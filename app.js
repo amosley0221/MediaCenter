@@ -30,6 +30,7 @@ const sourceSummary = document.querySelector("#sourceSummary");
 const mediaHero = document.querySelector(".media-hero");
 const mediaSections = document.querySelector("#mediaSections");
 const mediaTabs = [...document.querySelectorAll(".media-tab")];
+const mediaHeroPrimaryButton = mediaHero.querySelector(".hero-actions button:first-child");
 const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
 const browserUrlPeek = document.querySelector(".browser-url-peek");
@@ -78,6 +79,17 @@ const BLOCKED_EMBED_HOSTS = [
   "youtu.be",
   "youtube.com",
 ];
+
+const STREAMING_SERVICE_TARGETS = {
+  apple: "https://tv.apple.com/",
+  disney: "https://www.disneyplus.com/",
+  hulu: "https://www.hulu.com/",
+  netflix: "https://www.netflix.com/",
+  prime: "https://www.primevideo.com/",
+  twitch: "https://www.twitch.tv/",
+  youtube: "https://www.youtube.com/",
+  "youtube-tv": "https://tv.youtube.com/",
+};
 
 const mediaCatalog = {
   movies: {
@@ -247,12 +259,13 @@ const mediaCatalog = {
   streaming: {
     section: "streaming",
     title: "Streaming",
-    searchPlaceholder: "Search streaming services",
+    searchPlaceholder: "Search YouTube, Twitch, channels, or videos",
     hero: {
       label: "Streaming Hub",
       title: "Connected Services",
-      text: "Mock account links for YouTube, Twitch, YouTube TV, Netflix, and the services that will launch through official apps or web portals.",
+      text: "Launch YouTube, Twitch, YouTube TV, Netflix, and other services inside the MediaCenter Browser.",
       action: "Open",
+      target: "https://www.youtube.com/",
     },
     shelves: [
       {
@@ -264,6 +277,7 @@ const mediaCatalog = {
             progress: 62,
             brand: "youtube",
             status: "Connected",
+            target: "https://www.youtube.com/results?search_query=MKBHD%20Studio%20Tour",
           },
           {
             title: "LIRIK Live",
@@ -271,6 +285,7 @@ const mediaCatalog = {
             progress: 18,
             brand: "twitch",
             status: "Live",
+            target: "https://www.twitch.tv/lirik",
           },
           {
             title: "Lakers vs Warriors",
@@ -278,6 +293,7 @@ const mediaCatalog = {
             progress: 34,
             brand: "youtube-tv",
             status: "Live",
+            target: "https://tv.youtube.com/",
           },
           {
             title: "Stranger Things",
@@ -285,29 +301,102 @@ const mediaCatalog = {
             progress: 51,
             brand: "netflix",
             status: "Portal",
+            target: "https://www.netflix.com/search?q=Stranger%20Things",
           },
         ],
       },
       {
         title: "Live Now",
         items: [
-          { title: "Twitch Following", meta: "8 channels live", brand: "twitch", status: "Live" },
-          { title: "YouTube Live", meta: "Subscriptions live", brand: "youtube", status: "Live" },
-          { title: "YouTube TV Guide", meta: "Sports, news, DVR", brand: "youtube-tv", status: "Live" },
-          { title: "Prime Video Sports", meta: "Thursday Night Football", brand: "prime", status: "Live" },
-          { title: "Hulu Live", meta: "News and sports", brand: "hulu", status: "Live" },
+          {
+            title: "Twitch Following",
+            meta: "8 channels live",
+            brand: "twitch",
+            status: "Live",
+            target: "https://www.twitch.tv/directory/following/live",
+          },
+          {
+            title: "YouTube Live",
+            meta: "Subscriptions live",
+            brand: "youtube",
+            status: "Live",
+            target: "https://www.youtube.com/results?search_query=live",
+          },
+          {
+            title: "YouTube TV Guide",
+            meta: "Sports, news, DVR",
+            brand: "youtube-tv",
+            status: "Live",
+            target: "https://tv.youtube.com/",
+          },
+          {
+            title: "Prime Video Sports",
+            meta: "Thursday Night Football",
+            brand: "prime",
+            status: "Live",
+            target: "https://www.primevideo.com/",
+          },
+          {
+            title: "Hulu Live",
+            meta: "News and sports",
+            brand: "hulu",
+            status: "Live",
+            target: "https://www.hulu.com/live-tv",
+          },
         ],
       },
       {
         title: "Linked Services",
         items: [
-          { title: "YouTube", meta: "Subscriptions, playlists, history", brand: "youtube", status: "Connected" },
-          { title: "Twitch", meta: "Following, live channels, VODs", brand: "twitch", status: "Connected" },
-          { title: "YouTube TV", meta: "Live TV, DVR, guide", brand: "youtube-tv", status: "Sign in" },
-          { title: "Netflix", meta: "Portal launch, continue list", brand: "netflix", status: "Sign in" },
-          { title: "Hulu", meta: "Portal launch", brand: "hulu", status: "Sign in" },
-          { title: "Disney+", meta: "Portal launch", brand: "disney", status: "Sign in" },
-          { title: "Prime Video", meta: "Portal launch", brand: "prime", status: "Sign in" },
+          {
+            title: "YouTube",
+            meta: "Subscriptions, playlists, history",
+            brand: "youtube",
+            status: "Connected",
+            target: "https://www.youtube.com/",
+          },
+          {
+            title: "Twitch",
+            meta: "Following, live channels, VODs",
+            brand: "twitch",
+            status: "Connected",
+            target: "https://www.twitch.tv/",
+          },
+          {
+            title: "YouTube TV",
+            meta: "Live TV, DVR, guide",
+            brand: "youtube-tv",
+            status: "Sign in",
+            target: "https://tv.youtube.com/",
+          },
+          {
+            title: "Netflix",
+            meta: "Portal launch, continue list",
+            brand: "netflix",
+            status: "Sign in",
+            target: "https://www.netflix.com/",
+          },
+          {
+            title: "Hulu",
+            meta: "Portal launch",
+            brand: "hulu",
+            status: "Sign in",
+            target: "https://www.hulu.com/",
+          },
+          {
+            title: "Disney+",
+            meta: "Portal launch",
+            brand: "disney",
+            status: "Sign in",
+            target: "https://www.disneyplus.com/",
+          },
+          {
+            title: "Prime Video",
+            meta: "Portal launch",
+            brand: "prime",
+            status: "Sign in",
+            target: "https://www.primevideo.com/",
+          },
         ],
       },
       {
@@ -524,12 +613,54 @@ const mediaHome = {
     {
       title: "Streaming Services",
       items: [
-        { title: "YouTube", meta: "Connected | Playlists", section: "streaming", brand: "youtube", status: "Connected" },
-        { title: "Twitch", meta: "Connected | Live channels", section: "streaming", brand: "twitch", status: "Connected" },
-        { title: "YouTube TV", meta: "Live TV portal", section: "streaming", brand: "youtube-tv", status: "Sign in" },
-        { title: "Netflix", meta: "Portal launcher", section: "streaming", brand: "netflix", status: "Sign in" },
-        { title: "Hulu", meta: "Portal launcher", section: "streaming", brand: "hulu", status: "Sign in" },
-        { title: "Prime Video", meta: "Portal launcher", section: "streaming", brand: "prime", status: "Sign in" },
+        {
+          title: "YouTube",
+          meta: "Connected | Playlists",
+          section: "streaming",
+          brand: "youtube",
+          status: "Connected",
+          target: "https://www.youtube.com/",
+        },
+        {
+          title: "Twitch",
+          meta: "Connected | Live channels",
+          section: "streaming",
+          brand: "twitch",
+          status: "Connected",
+          target: "https://www.twitch.tv/",
+        },
+        {
+          title: "YouTube TV",
+          meta: "Live TV portal",
+          section: "streaming",
+          brand: "youtube-tv",
+          status: "Sign in",
+          target: "https://tv.youtube.com/",
+        },
+        {
+          title: "Netflix",
+          meta: "Portal launcher",
+          section: "streaming",
+          brand: "netflix",
+          status: "Sign in",
+          target: "https://www.netflix.com/",
+        },
+        {
+          title: "Hulu",
+          meta: "Portal launcher",
+          section: "streaming",
+          brand: "hulu",
+          status: "Sign in",
+          target: "https://www.hulu.com/",
+        },
+        {
+          title: "Prime Video",
+          meta: "Portal launcher",
+          section: "streaming",
+          brand: "prime",
+          status: "Sign in",
+          target: "https://www.primevideo.com/",
+        },
       ],
     },
     {
@@ -1235,6 +1366,105 @@ function getFilteredItems(items, query) {
   return items.filter((item) => getItemSearchText(item).includes(normalizedQuery));
 }
 
+function getStreamingSearchUrl(brand, query) {
+  const encodedQuery = encodeURIComponent(query.trim());
+
+  if (brand === "youtube-live") {
+    return `https://www.youtube.com/results?search_query=${encodedQuery}%20live`;
+  }
+
+  if (brand === "youtube") {
+    return `https://www.youtube.com/results?search_query=${encodedQuery}`;
+  }
+
+  if (brand === "twitch-live") {
+    return `https://www.twitch.tv/search?term=${encodedQuery}`;
+  }
+
+  if (brand === "twitch") {
+    return `https://www.twitch.tv/search?term=${encodedQuery}`;
+  }
+
+  return STREAMING_SERVICE_TARGETS[brand] || getBrowserHome();
+}
+
+function createStreamingSearchShelves(query) {
+  if (!query) {
+    return [];
+  }
+
+  return [
+    {
+      title: `Search Streaming for "${query}"`,
+      items: [
+        {
+          title: `YouTube: ${query}`,
+          meta: "Videos, channels, comments, quality, and fullscreen",
+          brand: "youtube",
+          status: "Search",
+          target: getStreamingSearchUrl("youtube", query),
+        },
+        {
+          title: `Twitch: ${query}`,
+          meta: "Live channels, VODs, chat, quality, and fullscreen",
+          brand: "twitch",
+          status: "Search",
+          target: getStreamingSearchUrl("twitch", query),
+        },
+        {
+          title: `YouTube Live: ${query}`,
+          meta: "Live videos and streams",
+          brand: "youtube",
+          status: "Live",
+          target: getStreamingSearchUrl("youtube-live", query),
+        },
+        {
+          title: `Twitch Live: ${query}`,
+          meta: "Channels and categories matching your search",
+          brand: "twitch",
+          status: "Live",
+          target: getStreamingSearchUrl("twitch-live", query),
+        },
+      ],
+    },
+  ];
+}
+
+function getStreamingItemTarget(item) {
+  if (item.target) {
+    return item.target;
+  }
+
+  if (!item.brand) {
+    return null;
+  }
+
+  const serviceHome = STREAMING_SERVICE_TARGETS[item.brand];
+
+  if (item.brand === "youtube" && item.title !== "YouTube") {
+    return getStreamingSearchUrl("youtube", item.title);
+  }
+
+  if (item.brand === "twitch" && item.title !== "Twitch") {
+    return getStreamingSearchUrl("twitch", item.title);
+  }
+
+  return serviceHome || null;
+}
+
+function openMediaItem(item, section) {
+  const streamingTarget = getStreamingItemTarget(item);
+
+  if (streamingTarget) {
+    openBrowser(streamingTarget);
+    return;
+  }
+
+  if (item.section && item.section !== section) {
+    openMediaCenter(item.section);
+  }
+}
+
 function createMediaCard(item, section, index) {
   const article = document.createElement("button");
   const cover = document.createElement("div");
@@ -1245,6 +1475,7 @@ function createMediaCard(item, section, index) {
 
   article.className = "media-card";
   article.type = "button";
+  article.setAttribute("aria-label", `Open ${item.title}`);
   article.classList.toggle("has-seasons", Boolean(item.seasons));
   article.classList.toggle("is-service-card", Boolean(item.brand));
   cover.className = `media-cover poster-${visualSection}`;
@@ -1270,12 +1501,16 @@ function createMediaCard(item, section, index) {
     article.append(badge);
   }
 
-  if (item.seasons) {
+  if (getStreamingItemTarget(item)) {
+    article.addEventListener("click", () => openMediaItem(item, section));
+  } else if (item.seasons) {
     article.addEventListener("click", () => {
       activeTvSeriesTitle = item.title;
       activeTvSeasonIndex = 0;
       renderMediaCenter("tv");
     });
+  } else if (item.section && item.section !== section) {
+    article.addEventListener("click", () => openMediaItem(item, section));
   }
 
   if (item.progress) {
@@ -1397,7 +1632,11 @@ function renderMediaCenter(focusSection = "home") {
   currentMediaSection = focusSection;
   const selected = getMediaSection(focusSection);
   const query = mediaSearchInput.value.trim();
-  const shelves = selected.shelves
+  const sourceShelves =
+    selected.section === "streaming"
+      ? [...createStreamingSearchShelves(query), ...selected.shelves]
+      : selected.shelves;
+  const shelves = sourceShelves
     .map((shelf) => createMediaShelf(shelf, selected.section, query))
     .filter(Boolean);
   const seasonPanel = selected.section === "tv" ? createSeasonPanel(selected, query) : null;
@@ -1411,7 +1650,8 @@ function renderMediaCenter(focusSection = "home") {
   mediaHero.querySelector(".hero-label").textContent = selected.hero.label;
   mediaHero.querySelector("h2").textContent = selected.hero.title;
   mediaHero.querySelector("p:last-of-type").textContent = selected.hero.text;
-  mediaHero.querySelector(".hero-actions button:first-child").textContent = selected.hero.action || "Play";
+  mediaHeroPrimaryButton.textContent = selected.hero.action || "Play";
+  mediaHeroPrimaryButton.dataset.target = selected.hero.target || "";
   mediaHero.querySelector(".hero-poster").className =
     `hero-poster poster-${selected.hero.posterSection || selected.section}`;
   mediaHero.querySelector(".hero-poster span").textContent = selected.hero.title
@@ -1901,6 +2141,12 @@ settingsButton.addEventListener("focus", () => setActiveLauncherItem(settingsBut
 settingsButton.addEventListener("click", () => {
   setActiveLauncherItem(settingsButton);
   openSettings();
+});
+
+mediaHeroPrimaryButton.addEventListener("click", () => {
+  if (currentMediaSection === "streaming" && mediaHeroPrimaryButton.dataset.target) {
+    openBrowser(mediaHeroPrimaryButton.dataset.target);
+  }
 });
 
 browserSearch.addEventListener("submit", (event) => {
