@@ -252,7 +252,6 @@ fun ToneOSLauncher(
     var openScreens by remember { mutableStateOf(emptySet<ToneScreen>()) }
     var appDrawerOpen by remember { mutableStateOf(false) }
     var taskSwitcherOpen by remember { mutableStateOf(false) }
-    var themePanelOpen by remember { mutableStateOf(false) }
     var appQuery by remember { mutableStateOf("") }
     var serverUrl by remember { mutableStateOf(readPreference("server_url")) }
     var serverPin by remember { mutableStateOf(readPreference("server_pin")) }
@@ -265,7 +264,6 @@ fun ToneOSLauncher(
         openScreens = openScreens + screen
         appDrawerOpen = false
         taskSwitcherOpen = false
-        themePanelOpen = false
     }
     val closeScreen: (ToneScreen) -> Unit = { screen ->
         openScreens = openScreens - screen
@@ -363,37 +361,13 @@ fun ToneOSLauncher(
             TopRightControls(
                 theme = theme,
                 wallpaper = wallpaper,
-                themePanelOpen = themePanelOpen,
-                onThemePanelToggle = {
-                    themePanelOpen = !themePanelOpen
-                    appDrawerOpen = false
-                    taskSwitcherOpen = false
-                },
                 modifier = Modifier.align(Alignment.TopEnd),
             )
-
-            if (themePanelOpen) {
-                ThemeChooserPanel(
-                    theme = theme,
-                    wallpaper = wallpaper,
-                    onThemeChange = {
-                        theme = it
-                        writePreference("appearance_theme", it.name)
-                    },
-                    onWallpaperChange = {
-                        wallpaper = it
-                        writePreference("appearance_wallpaper", it.name)
-                    },
-                    modifier = Modifier.align(Alignment.TopEnd),
-                )
-            }
 
             if (appDrawerOpen) {
                 AppDrawer(
                     activeScreen = activeScreen,
-                    installedApps = apps,
                     openToneApp = openToneApp,
-                    launchApp = launchApp,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
@@ -414,15 +388,12 @@ fun ToneOSLauncher(
                 onDrawerToggle = {
                     appDrawerOpen = !appDrawerOpen
                     taskSwitcherOpen = false
-                    themePanelOpen = false
                 },
                 onBack = {
                     if (appDrawerOpen) {
                         appDrawerOpen = false
                     } else if (taskSwitcherOpen) {
                         taskSwitcherOpen = false
-                    } else if (themePanelOpen) {
-                        themePanelOpen = false
                     } else {
                         activeScreen?.let(closeScreen)
                     }
@@ -430,13 +401,11 @@ fun ToneOSLauncher(
                 onTasks = {
                     taskSwitcherOpen = !taskSwitcherOpen
                     appDrawerOpen = false
-                    themePanelOpen = false
                 },
                 onHome = {
                     activeScreen = null
                     appDrawerOpen = false
                     taskSwitcherOpen = false
-                    themePanelOpen = false
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
@@ -544,8 +513,6 @@ fun WallpaperBrand(gold: Boolean) {
 fun TopRightControls(
     theme: ToneTheme,
     wallpaper: ToneWallpaperOption,
-    themePanelOpen: Boolean,
-    onThemePanelToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -568,22 +535,6 @@ fun TopRightControls(
                 MiniLocationIcon()
                 MiniSignalIcon()
                 Text("ToneOS", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
-
-        Surface(
-            modifier = Modifier
-                .size(40.dp)
-                .clickable(onClick = onThemePanelToggle),
-            color = if (themePanelOpen) Color.White.copy(alpha = 0.18f) else Color(0xD6080D1D),
-            shape = RoundedCornerShape(10.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-            shadowElevation = 10.dp,
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize().padding(10.dp)) {
-                drawCircle(Color(0xFFDB61AE), radius = size.minDimension * 0.34f, center = androidx.compose.ui.geometry.Offset(size.width * 0.35f, size.height * 0.35f))
-                drawCircle(Color(0xFF38B7EE), radius = size.minDimension * 0.34f, center = androidx.compose.ui.geometry.Offset(size.width * 0.64f, size.height * 0.35f))
-                drawCircle(Color(0xFFFFCC56), radius = size.minDimension * 0.34f, center = androidx.compose.ui.geometry.Offset(size.width * 0.50f, size.height * 0.64f))
             }
         }
     }
@@ -619,45 +570,6 @@ fun MiniSignalIcon() {
                     .clip(RoundedCornerShape(4.dp))
                     .background(Color.White.copy(alpha = 0.9f)),
             )
-        }
-    }
-}
-
-@Composable
-fun ThemeChooserPanel(
-    theme: ToneTheme,
-    wallpaper: ToneWallpaperOption,
-    onThemeChange: (ToneTheme) -> Unit,
-    onWallpaperChange: (ToneWallpaperOption) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier
-            .padding(top = 72.dp, end = 26.dp)
-            .widthIn(min = 280.dp, max = 360.dp),
-        color = Color(0xF010122B),
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-        shadowElevation = 22.dp,
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Theme", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            OptionRow(
-                options = ToneTheme.entries,
-                selected = theme,
-                label = { it.label },
-                onSelect = onThemeChange,
-            )
-            Text("Wallpaper", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ToneWallpaperOption.entries.forEach { option ->
-                    OptionButton(
-                        label = option.label,
-                        selected = wallpaper == option,
-                        onClick = { onWallpaperChange(option) },
-                    )
-                }
-            }
         }
     }
 }
@@ -746,9 +658,7 @@ fun HeroPanel(openToneApp: (ToneScreen) -> Unit) {
 @Composable
 fun AppDrawer(
     activeScreen: ToneScreen?,
-    installedApps: List<LauncherApp>,
     openToneApp: (ToneScreen) -> Unit,
-    launchApp: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -775,9 +685,6 @@ fun AppDrawer(
                     selected = activeScreen == app.screen,
                     onClick = { openToneApp(app.screen) },
                 )
-            }
-            items(installedApps) { app ->
-                DrawerInstalledAppTile(app = app, launchApp = launchApp)
             }
         }
     }
