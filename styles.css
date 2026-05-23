@@ -123,69 +123,211 @@ svg {
 }
 
 .wallpaper-brand {
+  --brand-core: #050506;
+  --brand-edge: rgba(255, 255, 255, 0.22);
+  --brand-cyan: rgba(0, 240, 255, 0.76);
+  --brand-magenta: rgba(255, 21, 176, 0.72);
+  --brand-glow: rgba(0, 238, 255, 0.34);
   position: absolute;
   left: 50%;
-  top: 45%;
+  top: 44%;
   z-index: 0;
   display: none;
-  color: #050506;
+  align-items: flex-end;
+  color: transparent;
   font-family: Impact, Haettenschweiler, "Arial Black", system-ui, sans-serif;
-  font-size: clamp(84px, 15vw, 240px);
+  font-size: 148px;
   font-style: italic;
   font-weight: 900;
   letter-spacing: 0;
-  line-height: 0.82;
-  opacity: 0.7;
+  line-height: 0.76;
+  opacity: 0.84;
   pointer-events: none;
-  text-shadow:
-    3px 0 0 rgba(0, 238, 255, 0.34),
-    -3px 0 0 rgba(255, 0, 126, 0.28),
-    0 18px 38px rgba(0, 0, 0, 0.22);
   text-transform: uppercase;
-  transform: translate(-50%, -50%) skew(-9deg);
+  transform: translate(-50%, -50%) rotate(-2deg) skew(-11deg);
+  filter:
+    drop-shadow(0 18px 26px rgba(0, 0, 0, 0.24))
+    drop-shadow(-5px -3px 0 var(--brand-cyan))
+    drop-shadow(5px 3px 0 var(--brand-magenta));
 }
 
 .wallpaper-brand::before,
 .wallpaper-brand::after {
   position: absolute;
   left: 0;
-  content: "ToneOS";
+  z-index: -1;
+  content: attr(data-word);
   overflow: hidden;
+  font: inherit;
+  letter-spacing: 0;
+  line-height: inherit;
+  white-space: nowrap;
 }
 
 .wallpaper-brand::before {
-  top: -0.04em;
-  height: 45%;
-  color: rgba(5, 5, 6, 0.86);
-  clip-path: polygon(0 6%, 100% 0, 100% 52%, 0 62%);
-  transform: translateX(0.035em);
+  top: 0.04em;
+  color: var(--brand-magenta);
+  opacity: 0.72;
+  clip-path: polygon(0 20%, 12% 8%, 28% 22%, 47% 7%, 70% 21%, 100% 0, 95% 76%, 67% 88%, 42% 74%, 16% 92%, 0 78%);
+  transform: translateX(0.055em) skew(-4deg);
 }
 
 .wallpaper-brand::after {
-  bottom: -0.06em;
-  height: 28%;
-  color: rgba(5, 5, 6, 0.78);
-  clip-path: polygon(0 24%, 100% 5%, 100% 80%, 0 100%);
-  transform: translateX(-0.025em);
+  top: -0.035em;
+  color: var(--brand-cyan);
+  opacity: 0.78;
+  clip-path: polygon(3% 0, 22% 15%, 38% 2%, 55% 16%, 80% 4%, 100% 19%, 95% 52%, 77% 42%, 54% 57%, 33% 43%, 8% 59%, 0 45%);
+  transform: translateX(-0.045em) skew(5deg);
+}
+
+.brand-letter {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  text-shadow:
+    0.02em 0.018em 0 var(--brand-magenta),
+    -0.018em -0.016em 0 var(--brand-cyan);
+  transform-origin: 50% 72%;
+  -webkit-text-stroke: 0.018em var(--brand-edge);
+}
+
+.brand-letter::before,
+.brand-letter::after {
+  position: absolute;
+  inset: 0;
+  content: attr(data-letter);
+  font: inherit;
+  line-height: inherit;
+}
+
+.brand-letter::before {
+  z-index: 1;
+  color: var(--brand-core);
+  clip-path: polygon(0 14%, 15% 0, 100% 7%, 90% 33%, 100% 50%, 84% 100%, 9% 92%, 0 72%, 11% 52%);
+  text-shadow:
+    0.012em 0.012em 0 var(--brand-magenta),
+    -0.012em -0.012em 0 var(--brand-cyan),
+    0 0 0.16em var(--brand-glow);
+}
+
+.brand-letter::after {
+  z-index: 2;
+  color: transparent;
+  opacity: 0.76;
+  clip-path: polygon(0 2%, 100% 0, 86% 22%, 18% 19%, 11% 36%, 0 31%);
+  transform: translate(-0.045em, -0.038em);
+  -webkit-text-stroke: 0.016em rgba(255, 255, 255, 0.58);
+}
+
+.brand-letter:nth-child(1) {
+  transform: translateY(-0.05em) rotate(-7deg) skew(-15deg);
+}
+
+.brand-letter:nth-child(1)::before {
+  clip-path: polygon(0 18%, 100% 0, 90% 24%, 68% 22%, 58% 100%, 21% 100%, 31% 28%, 0 35%);
+}
+
+.brand-letter:nth-child(2) {
+  transform: translateY(0.03em) rotate(4deg) scaleX(0.92);
+}
+
+.brand-letter:nth-child(2)::before {
+  clip-path: polygon(11% 9%, 84% 0, 100% 28%, 85% 87%, 41% 100%, 0 77%, 6% 24%);
+}
+
+.brand-letter:nth-child(3) {
+  transform: translateY(-0.02em) rotate(-3deg) skew(-10deg);
+}
+
+.brand-letter:nth-child(3)::before {
+  clip-path: polygon(0 0, 30% 7%, 73% 63%, 84% 8%, 100% 0, 90% 100%, 63% 93%, 22% 36%, 12% 100%, 0 94%);
+}
+
+.brand-letter:nth-child(4) {
+  transform: translateY(0.02em) rotate(2deg) skew(-12deg);
+}
+
+.brand-letter:nth-child(4)::before {
+  clip-path: polygon(0 5%, 100% 0, 89% 24%, 30% 23%, 26% 43%, 82% 40%, 72% 61%, 22% 63%, 18% 82%, 100% 76%, 88% 100%, 0 93%);
+}
+
+.brand-letter:nth-child(5) {
+  transform: translateY(-0.04em) rotate(5deg) scaleX(0.9);
+}
+
+.brand-letter:nth-child(5)::before {
+  clip-path: polygon(13% 10%, 86% 0, 100% 30%, 86% 88%, 39% 100%, 0 78%, 7% 25%);
+}
+
+.brand-letter:nth-child(6) {
+  transform: translateY(0.01em) rotate(-5deg) skew(-15deg);
+}
+
+.brand-letter:nth-child(6)::before {
+  clip-path: polygon(13% 0, 100% 7%, 88% 28%, 36% 24%, 28% 40%, 92% 45%, 100% 72%, 79% 100%, 0 91%, 10% 68%, 65% 73%, 72% 58%, 6% 53%, 0 24%);
+}
+
+.brand-stroke {
+  position: absolute;
+  z-index: 3;
+  display: block;
+  height: 0.075em;
+  background: linear-gradient(90deg, transparent 0, var(--brand-cyan) 14%, var(--brand-magenta) 62%, transparent 100%);
+  clip-path: polygon(0 45%, 14% 0, 91% 10%, 100% 55%, 85% 100%, 7% 86%);
+  filter: drop-shadow(0 0 0.08em var(--brand-glow));
+}
+
+.brand-stroke-one {
+  left: -0.28em;
+  top: 0.04em;
+  width: 1.1em;
+  transform: rotate(-19deg);
+}
+
+.brand-stroke-two {
+  right: -0.38em;
+  top: 0.1em;
+  width: 1.35em;
+  transform: rotate(-13deg);
+}
+
+.brand-stroke-three {
+  left: 1.05em;
+  bottom: -0.12em;
+  width: 2.6em;
+  transform: rotate(-2deg);
 }
 
 .desktop.wallpaper-default-tone .wallpaper-brand,
 .desktop.wallpaper-black-gold-tone .wallpaper-brand {
-  display: block;
+  display: flex;
 }
 
 .desktop.wallpaper-black-gold-tone .wallpaper-brand {
-  color: #d6a93b;
-  opacity: 0.56;
-  text-shadow:
-    3px 0 0 rgba(255, 230, 150, 0.18),
-    -3px 0 0 rgba(118, 72, 9, 0.5),
-    0 18px 38px rgba(0, 0, 0, 0.5);
+  --brand-core: #d6a93b;
+  --brand-edge: rgba(255, 236, 173, 0.34);
+  --brand-cyan: rgba(255, 236, 151, 0.62);
+  --brand-magenta: rgba(91, 49, 3, 0.86);
+  --brand-glow: rgba(255, 205, 74, 0.32);
+  opacity: 0.72;
 }
 
-.desktop.wallpaper-black-gold-tone .wallpaper-brand::before,
-.desktop.wallpaper-black-gold-tone .wallpaper-brand::after {
-  color: rgba(214, 169, 59, 0.76);
+@media (max-width: 860px) {
+  .wallpaper-brand {
+    font-size: 92px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .wallpaper-brand {
+    font-size: 188px;
+  }
+}
+
+@media (min-width: 1900px) {
+  .wallpaper-brand {
+    font-size: 230px;
+  }
 }
 
 .desktop-glow {
