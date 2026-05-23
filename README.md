@@ -32,6 +32,13 @@ MEDIA_CENTER_WINDOWED=1 npm start
 - Scanned Steam games persist in the Games section with Steam cover URLs and `steam://rungameid` launch links.
 - Source choices persist in local storage for this prototype.
 - The desktop media library is saved in Electron app data as `media-library.json`.
+- Settings are real persisted controls in Electron app data as `settings.json`.
+- Optional metadata providers can enrich scanned libraries:
+  - TMDb for movie and TV poster/backdrop metadata with a TMDb API key.
+  - RAWG for game artwork/details with a RAWG API key.
+  - Open Library for book cover/author metadata.
+  - MusicBrainz for music recording metadata.
+  - Steam artwork from public Steam CDN URLs.
 
 ## Packaging
 

@@ -1,6 +1,7 @@
 const path = require("node:path");
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { loadLibrary, upsertScannedSource, upsertSteamScan } = require("./media-library");
+const { loadSettings, loadSettingsSync, saveSettings } = require("./settings-store");
 const { scanSteamLibraries } = require("./steam-scanner");
 
 const SOURCE_TITLES = {
@@ -19,7 +20,13 @@ function getLibraryPath() {
   return path.join(app.getPath("userData"), "media-library.json");
 }
 
+function getSettingsPath() {
+  return path.join(app.getPath("userData"), "settings.json");
+}
+
 function createWindow() {
+  const settings = loadSettingsSync(getSettingsPath());
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 720,
@@ -27,7 +34,7 @@ function createWindow() {
     minHeight: 540,
     backgroundColor: "#000000",
     frame: false,
-    fullscreen: process.env.MEDIA_CENTER_WINDOWED !== "1",
+    fullscreen: process.env.MEDIA_CENTER_WINDOWED !== "1" && settings.display.fullscreenStartup,
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
@@ -91,7 +98,8 @@ ipcMain.handle("media:pick-source-folder", async (_event, payload = {}) => {
 
 ipcMain.handle("media:scan-steam", async () => {
   const steamScan = await scanSteamLibraries();
-  return upsertSteamScan(getLibraryPath(), steamScan);
+  const settings = await loadSettings(getSettingsPath());
+  return upsertSteamScan(getLibraryPath(), steamScan, settings.metadata);
 });
 
 ipcMain.handle("media:reveal-path", async (_event, filePath) => {
@@ -110,7 +118,8 @@ ipcMain.handle("media:load-library", async () => {
 ipcMain.handle("media:scan-source", async (_event, payload = {}) => {
   const sourceKey = payload.sourceKey || "local";
   const sourcePaths = Array.isArray(payload.paths) && payload.paths.length ? payload.paths : [payload.path];
-  return upsertScannedSource(getLibraryPath(), sourceKey, sourcePaths);
+  const settings = await loadSettings(getSettingsPath());
+  return upsertScannedSource(getLibraryPath(), sourceKey, sourcePaths, settings.metadata);
 });
 
 ipcMain.handle("media:open-item", async (_event, item = {}) => {
@@ -125,4 +134,12 @@ ipcMain.handle("media:open-item", async (_event, item = {}) => {
   }
 
   return { ok: false, error: "No playable path was available for this item." };
+});
+
+ipcMain.handle("settings:load", async () => {
+  return loadSettings(getSettingsPath());
+});
+
+ipcMain.handle("settings:save", async (_event, settings = {}) => {
+  return saveSettings(getSettingsPath(), settings);
 });

@@ -371,7 +371,7 @@
             </div>
           </header>
           <section class="settings-grid" aria-label="System settings">
-            <article class="settings-card">
+            <button type="button" class="settings-card active" data-settings-section="display">
               <span class="tile-icon icon-settings" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 7h16" />
@@ -381,9 +381,8 @@
                 </svg>
               </span>
               <h2>Display</h2>
-              <p>4K theater layout, overscan, fullscreen startup, and taskbar reveal.</p>
-            </article>
-            <article class="settings-card">
+            </button>
+            <button type="button" class="settings-card" data-settings-section="audio">
               <span class="tile-icon icon-music" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 15v-4a7 7 0 0 1 14 0v4" />
@@ -392,9 +391,8 @@
                 </svg>
               </span>
               <h2>Audio</h2>
-              <p>Receiver output, spatial audio, volume steps, and night mode.</p>
-            </article>
-            <article class="settings-card">
+            </button>
+            <button type="button" class="settings-card" data-settings-section="controllers">
               <span class="tile-icon icon-games" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M7 15h4" />
@@ -405,9 +403,118 @@
                 </svg>
               </span>
               <h2>Controllers</h2>
-              <p>Gamepad pairing, remote shortcuts, keyboard mapping, and pointer speed.</p>
-            </article>
+            </button>
+            <button type="button" class="settings-card" data-settings-section="metadata">
+              <span class="tile-icon icon-browser" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 6h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 18h10" />
+                  <path d="M17 16l3 2-3 2v-4Z" />
+                </svg>
+              </span>
+              <h2>Metadata</h2>
+            </button>
           </section>
+
+          <form class="settings-panel" id="settingsForm">
+            <section class="settings-section active" data-settings-panel="display">
+              <header>
+                <h2>Display</h2>
+                <span>Shell behavior</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="display.fullscreenStartup" />
+                <span>Start MediaCenter fullscreen</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="display.taskbarReveal" />
+                <span>Reveal taskbar at bottom edge</span>
+              </label>
+              <label class="setting-field">
+                <span>Overscan padding</span>
+                <input type="range" name="display.overscan" min="0" max="48" step="2" />
+              </label>
+            </section>
+
+            <section class="settings-section" data-settings-panel="audio" hidden>
+              <header>
+                <h2>Audio</h2>
+                <span>App playback preferences</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="audio.nightMode" />
+                <span>Night mode</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="audio.spatialAudio" />
+                <span>Prefer spatial audio</span>
+              </label>
+              <label class="setting-field">
+                <span>Volume step</span>
+                <input type="range" name="audio.volumeStep" min="1" max="20" step="1" />
+              </label>
+            </section>
+
+            <section class="settings-section" data-settings-panel="controllers" hidden>
+              <header>
+                <h2>Controllers</h2>
+                <span>Navigation input</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="controllers.gamepadNavigation" />
+                <span>Gamepad navigation</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="controllers.buttonHints" />
+                <span>Show button hints</span>
+              </label>
+              <label class="setting-field">
+                <span>Pointer speed</span>
+                <input type="range" name="controllers.pointerSpeed" min="1" max="10" step="1" />
+              </label>
+            </section>
+
+            <section class="settings-section" data-settings-panel="metadata" hidden>
+              <header>
+                <h2>Metadata Providers</h2>
+                <span>Covers and library details</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="metadata.tmdbEnabled" />
+                <span>TMDb movies and TV</span>
+              </label>
+              <label class="setting-field">
+                <span>TMDb API key</span>
+                <input type="password" name="metadata.tmdbApiKey" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="metadata.rawgEnabled" />
+                <span>RAWG games</span>
+              </label>
+              <label class="setting-field">
+                <span>RAWG API key</span>
+                <input type="password" name="metadata.rawgApiKey" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="metadata.openLibraryEnabled" />
+                <span>Open Library books</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="metadata.musicBrainzEnabled" />
+                <span>MusicBrainz music</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="metadata.steamArtworkEnabled" />
+                <span>Steam artwork</span>
+              </label>
+            </section>
+
+            <footer class="settings-actions">
+              <span id="settingsStatus" aria-live="polite">Settings loaded.</span>
+              <button type="submit">Save Settings</button>
+            </footer>
+          </form>
         </div>
       </section>
 

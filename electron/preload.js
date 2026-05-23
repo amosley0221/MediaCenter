@@ -10,5 +10,7 @@ contextBridge.exposeInMainWorld(
     revealPath: (filePath) => ipcRenderer.invoke("media:reveal-path", filePath),
     scanMediaSource: (sourceKey, paths) => ipcRenderer.invoke("media:scan-source", { sourceKey, paths }),
     scanSteamLibrary: () => ipcRenderer.invoke("media:scan-steam"),
+    loadSettings: () => ipcRenderer.invoke("settings:load"),
+    saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   }),
 );

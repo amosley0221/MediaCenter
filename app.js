@@ -50,6 +50,10 @@ const browserOpenLive = document.querySelector("#browserOpenLive");
 const windowControls = [...document.querySelectorAll(".window-control")];
 const windowDragbar = document.querySelector("#windowDragbar");
 const resizeHandles = [...document.querySelectorAll(".resize-handle")];
+const settingsCards = [...document.querySelectorAll(".settings-card")];
+const settingsPanels = [...document.querySelectorAll(".settings-section")];
+const settingsForm = document.querySelector("#settingsForm");
+const settingsStatus = document.querySelector("#settingsStatus");
 const desktopBridge = window.mediaCenterDesktop || null;
 
 const MIN_WINDOW_WIDTH = 520;
@@ -58,6 +62,7 @@ const WINDOW_MARGIN = 8;
 const DEFAULT_BROWSER_HOME = "https://example.com";
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
 const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
+const APP_SETTINGS_STORAGE_KEY = "mediacenter.settings.v1";
 const REAL_LIBRARY_SOURCE = "desktop-library";
 const BLOCKED_EMBED_HOSTS = [
   "amazon.com",
@@ -90,6 +95,33 @@ const STREAMING_SERVICE_TARGETS = {
   twitch: "https://www.twitch.tv/",
   youtube: "https://www.youtube.com/",
   "youtube-tv": "https://tv.youtube.com/",
+};
+
+const DEFAULT_APP_SETTINGS = {
+  audio: {
+    nightMode: false,
+    spatialAudio: false,
+    volumeStep: 5,
+  },
+  controllers: {
+    buttonHints: true,
+    gamepadNavigation: true,
+    pointerSpeed: 5,
+  },
+  display: {
+    fullscreenStartup: true,
+    overscan: 0,
+    taskbarReveal: true,
+  },
+  metadata: {
+    musicBrainzEnabled: false,
+    openLibraryEnabled: false,
+    rawgApiKey: "",
+    rawgEnabled: false,
+    steamArtworkEnabled: true,
+    tmdbApiKey: "",
+    tmdbEnabled: false,
+  },
 };
 
 const mediaCatalog = {
@@ -736,11 +768,155 @@ let taskSwitcherPinned = false;
 let taskSwitcherCloseTimer = null;
 let mediaSources = getInitialMediaSources();
 let desktopLibrary = null;
+let appSettings = mergeAppSettings();
 let browserHomeUrl = loadBrowserHome();
 let browserAddressSelectMode = "ready";
 
 function canUseDesktopBridge() {
   return Boolean(desktopBridge?.isElectron);
+}
+
+function mergeAppSettings(settings = {}) {
+  return {
+    audio: {
+      ...DEFAULT_APP_SETTINGS.audio,
+      ...(settings.audio || {}),
+    },
+    controllers: {
+      ...DEFAULT_APP_SETTINGS.controllers,
+      ...(settings.controllers || {}),
+    },
+    display: {
+      ...DEFAULT_APP_SETTINGS.display,
+      ...(settings.display || {}),
+    },
+    metadata: {
+      ...DEFAULT_APP_SETTINGS.metadata,
+      ...(settings.metadata || {}),
+    },
+  };
+}
+
+function loadLocalAppSettings() {
+  try {
+    return mergeAppSettings(JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || "null"));
+  } catch {
+    return mergeAppSettings();
+  }
+}
+
+function saveLocalAppSettings(settings) {
+  try {
+    localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Desktop settings still work if browser storage is unavailable.
+  }
+}
+
+function getSettingByPath(settings, pathValue) {
+  return pathValue.split(".").reduce((value, key) => value?.[key], settings);
+}
+
+function setSettingByPath(settings, pathValue, value) {
+  const keys = pathValue.split(".");
+  const lastKey = keys.pop();
+  const target = keys.reduce((nextTarget, key) => nextTarget[key], settings);
+  target[lastKey] = value;
+}
+
+function setSettingsStatus(text) {
+  if (settingsStatus) {
+    settingsStatus.textContent = text;
+  }
+}
+
+function setSettingsSection(section) {
+  settingsCards.forEach((card) => {
+    card.classList.toggle("active", card.dataset.settingsSection === section);
+  });
+  settingsPanels.forEach((panel) => {
+    const isActive = panel.dataset.settingsPanel === section;
+    panel.hidden = !isActive;
+    panel.classList.toggle("active", isActive);
+  });
+}
+
+function populateSettingsForm(settings) {
+  [...settingsForm.elements].forEach((control) => {
+    if (!control.name) {
+      return;
+    }
+
+    const value = getSettingByPath(settings, control.name);
+
+    if (control.type === "checkbox") {
+      control.checked = Boolean(value);
+      return;
+    }
+
+    control.value = value ?? "";
+  });
+}
+
+function readSettingsForm() {
+  const nextSettings = mergeAppSettings(appSettings);
+
+  [...settingsForm.elements].forEach((control) => {
+    if (!control.name) {
+      return;
+    }
+
+    let value = control.type === "checkbox" ? control.checked : control.value;
+
+    if (control.type === "range" || control.type === "number") {
+      value = Number(value);
+    }
+
+    setSettingByPath(nextSettings, control.name, value);
+  });
+
+  return mergeAppSettings(nextSettings);
+}
+
+function applyAppSettings(settings) {
+  appSettings = mergeAppSettings(settings);
+  desktop.style.setProperty("--overscan", `${Math.max(0, Number(appSettings.display.overscan) || 0)}px`);
+  desktop.classList.toggle("disable-taskbar-reveal", !appSettings.display.taskbarReveal);
+  desktop.classList.toggle("night-mode", appSettings.audio.nightMode);
+  desktop.classList.toggle("show-button-hints", appSettings.controllers.buttonHints);
+  saveLocalAppSettings(appSettings);
+}
+
+async function loadAppSettings() {
+  let loadedSettings = loadLocalAppSettings();
+
+  if (canUseDesktopBridge() && typeof desktopBridge.loadSettings === "function") {
+    try {
+      loadedSettings = await desktopBridge.loadSettings();
+    } catch {
+      loadedSettings = loadLocalAppSettings();
+    }
+  }
+
+  applyAppSettings(loadedSettings);
+  populateSettingsForm(appSettings);
+  setSettingsStatus("Settings loaded.");
+}
+
+async function saveAppSettings(settings) {
+  applyAppSettings(settings);
+
+  if (canUseDesktopBridge() && typeof desktopBridge.saveSettings === "function") {
+    try {
+      applyAppSettings(await desktopBridge.saveSettings(appSettings));
+    } catch {
+      setSettingsStatus("Settings saved locally.");
+      return;
+    }
+  }
+
+  populateSettingsForm(appSettings);
+  setSettingsStatus("Settings saved.");
 }
 
 function loadBrowserHome() {
@@ -864,6 +1040,9 @@ function buildSeriesItems(episodes) {
 
       return {
         addedAt: newestEpisode?.addedAt,
+        backdropUrl: newestEpisode?.backdropUrl,
+        coverUrl: newestEpisode?.coverUrl,
+        metadata: newestEpisode?.metadata,
         meta: `${seasons.length} ${seasons.length === 1 ? "season" : "seasons"} | ${episodeCount} ${episodeCount === 1 ? "episode" : "episodes"}`,
         seasons,
         source: "desktop-scan",
@@ -2188,7 +2367,7 @@ function setFullscreenShell(isFullscreen) {
 }
 
 function updateTaskbarPeek(event) {
-  if (!desktop.classList.contains("app-fullscreen")) {
+  if (!desktop.classList.contains("app-fullscreen") || !appSettings.display.taskbarReveal) {
     return;
   }
 
@@ -2403,6 +2582,23 @@ settingsButton.addEventListener("focus", () => setActiveLauncherItem(settingsBut
 settingsButton.addEventListener("click", () => {
   setActiveLauncherItem(settingsButton);
   openSettings();
+});
+
+settingsCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    setSettingsSection(card.dataset.settingsSection);
+  });
+});
+
+settingsForm.addEventListener("input", () => {
+  const nextSettings = readSettingsForm();
+  applyAppSettings(nextSettings);
+  setSettingsStatus("Unsaved changes.");
+});
+
+settingsForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveAppSettings(readSettingsForm());
 });
 
 mediaHeroPrimaryButton.addEventListener("click", () => {
@@ -2761,4 +2957,5 @@ function applyStartupState() {
 updateClock();
 setInterval(updateClock, 1000 * 15);
 applyStartupState();
+loadAppSettings();
 loadDesktopLibrary();

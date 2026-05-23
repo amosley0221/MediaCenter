@@ -53,6 +53,8 @@ const IGNORED_DIRECTORIES = new Set([
 ]);
 const MAX_SCAN_DEPTH = 8;
 const MAX_SCAN_ITEMS = 5000;
+const MAX_METADATA_LOOKUPS = 24;
+const MUSICBRAINZ_USER_AGENT = "MediaCenter/0.1.0 (personal desktop media library)";
 
 function createEmptyLibrary() {
   return {
@@ -160,6 +162,212 @@ function cleanMediaTitle(filePath) {
     .trim();
 
   return toTitleCase(cleaned || baseName || path.basename(filePath));
+}
+
+function cleanProviderQuery(title = "") {
+  return title
+    .replace(/\b(19|20)\d{2}\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchJson(url, headers = {}) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      ...headers,
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json();
+}
+
+function getTmdbPosterUrl(pathValue) {
+  return pathValue ? `https://image.tmdb.org/t/p/w500${pathValue}` : "";
+}
+
+function getTmdbBackdropUrl(pathValue) {
+  return pathValue ? `https://image.tmdb.org/t/p/w780${pathValue}` : "";
+}
+
+async function getTmdbMetadata(item, mediaType, metadataSettings) {
+  const apiKey = metadataSettings.tmdbApiKey?.trim();
+
+  if (!metadataSettings.tmdbEnabled || !apiKey) {
+    return null;
+  }
+
+  const queryTitle = mediaType === "tv" ? item.seriesTitle || item.title : item.title;
+  const query = encodeURIComponent(cleanProviderQuery(queryTitle));
+  const data = await fetchJson(
+    `https://api.themoviedb.org/3/search/${mediaType}?api_key=${encodeURIComponent(apiKey)}&query=${query}&include_adult=false`,
+  );
+  const result = data?.results?.[0];
+
+  if (!result) {
+    return null;
+  }
+
+  const year = String(result.release_date || result.first_air_date || "").slice(0, 4);
+
+  return {
+    backdropUrl: getTmdbBackdropUrl(result.backdrop_path),
+    coverUrl: getTmdbPosterUrl(result.poster_path),
+    metadata: {
+      overview: result.overview || "",
+      provider: "TMDb",
+      providerId: result.id,
+      rating: result.vote_average || null,
+      year,
+    },
+    meta:
+      mediaType === "tv"
+        ? `${item.meta || "TV"}${year ? ` | ${year}` : ""}`
+        : `${year || item.extension || "Movie"} | TMDb`,
+    title: mediaType === "tv" ? item.title : result.title || result.name || item.title,
+  };
+}
+
+async function getRawgMetadata(item, metadataSettings) {
+  const apiKey = metadataSettings.rawgApiKey?.trim();
+
+  if (!metadataSettings.rawgEnabled || !apiKey) {
+    return null;
+  }
+
+  const data = await fetchJson(
+    `https://api.rawg.io/api/games?key=${encodeURIComponent(apiKey)}&search=${encodeURIComponent(cleanProviderQuery(item.title))}&page_size=1`,
+  );
+  const result = data?.results?.[0];
+
+  if (!result) {
+    return null;
+  }
+
+  return {
+    coverUrl: result.background_image || item.coverUrl,
+    metadata: {
+      provider: "RAWG",
+      providerId: result.id,
+      rating: result.rating || null,
+      released: result.released || "",
+    },
+    meta: `${result.released ? String(result.released).slice(0, 4) : "Game"} | RAWG`,
+    title: result.name || item.title,
+  };
+}
+
+async function getOpenLibraryMetadata(item, metadataSettings) {
+  if (!metadataSettings.openLibraryEnabled) {
+    return null;
+  }
+
+  const data = await fetchJson(
+    `https://openlibrary.org/search.json?title=${encodeURIComponent(cleanProviderQuery(item.title))}&limit=1`,
+  );
+  const result = data?.docs?.[0];
+
+  if (!result) {
+    return null;
+  }
+
+  const author = result.author_name?.[0] || "";
+
+  return {
+    coverUrl: result.cover_i ? `https://covers.openlibrary.org/b/id/${result.cover_i}-L.jpg` : item.coverUrl,
+    metadata: {
+      author,
+      provider: "Open Library",
+      providerId: result.key || "",
+      year: result.first_publish_year || null,
+    },
+    meta: `${author || "Book"}${result.first_publish_year ? ` | ${result.first_publish_year}` : ""}`,
+    title: result.title || item.title,
+  };
+}
+
+async function getMusicBrainzMetadata(item, metadataSettings) {
+  if (!metadataSettings.musicBrainzEnabled) {
+    return null;
+  }
+
+  const query = [`recording:"${item.title}"`];
+
+  if (item.artist && item.artist !== "Local Music") {
+    query.push(`artist:"${item.artist}"`);
+  }
+
+  const data = await fetchJson(
+    `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query.join(" AND "))}&fmt=json&limit=1`,
+    { "User-Agent": MUSICBRAINZ_USER_AGENT },
+  );
+  const result = data?.recordings?.[0];
+
+  if (!result) {
+    return null;
+  }
+
+  const artist = result["artist-credit"]?.map((credit) => credit.name).filter(Boolean).join(", ");
+
+  return {
+    metadata: {
+      provider: "MusicBrainz",
+      providerId: result.id,
+      score: result.score || null,
+    },
+    meta: `${artist || item.artist || "Music"} | MusicBrainz`,
+    title: result.title || item.title,
+  };
+}
+
+async function getMetadataForItem(item, metadataSettings = {}) {
+  try {
+    if (item.section === "movies") {
+      return getTmdbMetadata(item, "movie", metadataSettings);
+    }
+
+    if (item.section === "tv") {
+      return getTmdbMetadata(item, "tv", metadataSettings);
+    }
+
+    if (item.section === "games") {
+      return getRawgMetadata(item, metadataSettings);
+    }
+
+    if (item.section === "books") {
+      return getOpenLibraryMetadata(item, metadataSettings);
+    }
+
+    if (item.section === "music") {
+      return getMusicBrainzMetadata(item, metadataSettings);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+async function enrichItemsWithMetadata(items, metadataSettings = {}) {
+  const enrichedItems = [];
+  let lookupCount = 0;
+
+  for (const item of items) {
+    if (lookupCount >= MAX_METADATA_LOOKUPS) {
+      enrichedItems.push(item);
+      continue;
+    }
+
+    lookupCount += 1;
+    const metadata = await getMetadataForItem(item, metadataSettings);
+    enrichedItems.push(metadata ? { ...item, ...metadata } : item);
+  }
+
+  return enrichedItems;
 }
 
 function parseTvEpisode(filePath) {
@@ -395,8 +603,9 @@ async function scanSourcePaths(sourceKey, sourcePaths) {
   };
 }
 
-async function upsertScannedSource(libraryPath, sourceKey, sourcePaths) {
+async function upsertScannedSource(libraryPath, sourceKey, sourcePaths, metadataSettings = {}) {
   const scanResult = await scanSourcePaths(sourceKey, sourcePaths);
+  scanResult.items = await enrichItemsWithMetadata(scanResult.items, metadataSettings);
   const library = await loadLibrary(libraryPath);
   const nextSources = library.sources.filter((source) => source.id !== scanResult.sourceId);
   const nextSections = Object.fromEntries(
@@ -432,29 +641,36 @@ async function upsertScannedSource(libraryPath, sourceKey, sourcePaths) {
   };
 }
 
-function createSteamLibraryItems(games = []) {
+function createSteamLibraryItems(games = [], metadataSettings = {}) {
   return games
     .filter((game) => game.name && !game.error)
-    .map((game) => ({
-      addedAt: new Date().toISOString(),
-      appId: game.appId,
-      coverUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`,
-      headerUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/header.jpg`,
-      id: `steam:${game.appId}`,
-      launchUrl: `steam://rungameid/${game.appId}`,
-      meta: "Steam | Installed",
-      path: game.installDir,
-      section: "games",
-      source: "steam",
-      sourceId: "steam",
-      title: game.name,
-      updatedAt: new Date().toISOString(),
-    }));
+    .map((game) => {
+      const item = {
+        addedAt: new Date().toISOString(),
+        appId: game.appId,
+        id: `steam:${game.appId}`,
+        launchUrl: `steam://rungameid/${game.appId}`,
+        meta: "Steam | Installed",
+        path: game.installDir,
+        section: "games",
+        source: "steam",
+        sourceId: "steam",
+        title: game.name,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (metadataSettings.steamArtworkEnabled !== false) {
+        item.coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`;
+        item.headerUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/header.jpg`;
+      }
+
+      return item;
+    });
 }
 
-async function upsertSteamScan(libraryPath, steamScan) {
+async function upsertSteamScan(libraryPath, steamScan, metadataSettings = {}) {
   const library = await loadLibrary(libraryPath);
-  const steamItems = createSteamLibraryItems(steamScan.games || []);
+  const steamItems = createSteamLibraryItems(steamScan.games || [], metadataSettings);
   const nextSources = library.sources.filter((source) => source.id !== "steam");
   const nextSections = {
     ...library.sections,
