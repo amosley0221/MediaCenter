@@ -229,6 +229,24 @@ function mapYoutubeVideo(item, status = "Video") {
   };
 }
 
+function mapYoutubeVideoResource(item, status = "Video") {
+  const videoId = typeof item.id === "string" ? item.id : item.id?.videoId;
+  const snippet = item.snippet || {};
+
+  if (!videoId) {
+    return null;
+  }
+
+  return {
+    brand: "youtube",
+    coverUrl: getThumbnail(snippet.thumbnails),
+    meta: `${cleanText(snippet.channelTitle || "YouTube")} | ${formatDate(snippet.publishedAt)}`,
+    status,
+    target: `https://www.youtube.com/watch?v=${videoId}`,
+    title: compactText(snippet.title, "YouTube video"),
+  };
+}
+
 async function getYoutubeVideosForChannel(channelId, settings, messages) {
   const results = { latest: [], live: [] };
 
@@ -255,6 +273,26 @@ async function getYoutubeVideosForChannel(channelId, settings, messages) {
   }
 
   return results;
+}
+
+async function getYoutubePopular(settings, messages) {
+  try {
+    const result = await youtubeRequest(
+      "/videos",
+      {
+        chart: "mostPopular",
+        maxResults: 18,
+        part: "snippet,statistics",
+        regionCode: "US",
+      },
+      settings,
+    );
+
+    return (result.items || []).map((item) => mapYoutubeVideoResource(item, "Popular")).filter(Boolean);
+  } catch (error) {
+    messages.push(`YouTube popular videos: ${error.message}`);
+    return [];
+  }
 }
 
 async function getYoutubeSearches(settings, messages) {
@@ -304,6 +342,7 @@ async function loadYoutubeData(settings = {}) {
   }
 
   const configuredChannels = splitEntries(settings.youtubeChannels).slice(0, 12);
+  const configuredSearches = splitEntries(settings.youtubeSearches);
   const subscriptionChannels = await getYoutubeSubscriptionChannels(settings, messages);
   const resolvedChannels = [];
 
@@ -317,6 +356,7 @@ async function loadYoutubeData(settings = {}) {
   const channelIds = [...new Set([...subscriptionChannels, ...resolvedChannels])].slice(0, 20);
   const liveItems = [];
   const latestItems = [];
+  const shouldLoadPopular = channelIds.length === 0 && configuredSearches.length === 0;
 
   for (const channelId of channelIds) {
     const channelResults = await getYoutubeVideosForChannel(channelId, settings, messages);
@@ -325,6 +365,7 @@ async function loadYoutubeData(settings = {}) {
   }
 
   const searchItems = await getYoutubeSearches(settings, messages);
+  const popularItems = shouldLoadPopular ? await getYoutubePopular(settings, messages) : [];
 
   if (liveItems.length) {
     shelves.push({ title: "YouTube Live", items: liveItems.slice(0, 18), source: "streaming-provider" });
@@ -340,8 +381,13 @@ async function loadYoutubeData(settings = {}) {
     shelves.push({ title: "YouTube Search Topics", items: searchItems.slice(0, 18), source: "streaming-provider" });
   }
 
+  if (popularItems.length) {
+    shelves.push({ title: "Popular on YouTube", items: popularItems.slice(0, 18), source: "streaming-provider" });
+    homeItems.push(...popularItems.slice(0, 6));
+  }
+
   if (!shelves.length && !messages.length) {
-    messages.push("YouTube returned no videos for the saved channels or searches.");
+    messages.push("YouTube returned no videos. Add channels/search topics or check the API key.");
   }
 
   return { homeItems, messages, shelves };
