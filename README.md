@@ -1,6 +1,6 @@
-# MediaCenter
+# ToneOS
 
-MediaCenter is an Electron desktop prototype for a home theater media and gaming PC.
+ToneOS is an Electron desktop prototype for a home theater media and gaming PC. MediaCenter remains the built-in app for controlling movies, TV, music, books, games, and streaming.
 
 ## Run
 
@@ -33,6 +33,8 @@ MEDIA_CENTER_WINDOWED=1 npm start
 - Source choices persist in local storage for this prototype.
 - The desktop media library is saved in Electron app data as `media-library.json`.
 - Settings are real persisted controls in Electron app data as `settings.json`.
+- ToneOS theme settings control the OS color system and wallpaper variants.
+- Wallpaper options include the default gradient, default gradient with ToneOS branding, black/gold, and black/gold with ToneOS branding.
 - Optional metadata providers can enrich scanned libraries:
   - TMDb for movie and TV poster/backdrop metadata with a TMDb API key.
   - RAWG for game artwork/details with a RAWG API key.

@@ -3,13 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MediaCenter Prototype</title>
+    <title>ToneOS</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="desktop" aria-label="MediaDeck OS prototype">
+    <main class="desktop theme-default wallpaper-default" aria-label="ToneOS">
       <div class="desktop-glow desktop-glow-left"></div>
       <div class="desktop-glow desktop-glow-right"></div>
+      <div class="wallpaper-brand" aria-hidden="true">ToneOS</div>
 
       <header class="top-status" aria-label="System status">
         <span class="status-icon" aria-hidden="true">
@@ -81,7 +82,7 @@
             type="button"
             aria-label="Open settings"
             data-title="Settings"
-            data-description="Configure controllers, audio output, display mode, themes, and startup."
+            data-description="Configure controllers, audio output, display mode, themes, wallpaper, and startup."
           >
             <span class="tile-icon icon-settings" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -404,6 +405,17 @@
               </span>
               <h2>Controllers</h2>
             </button>
+            <button type="button" class="settings-card" data-settings-section="themes">
+              <span class="tile-icon icon-settings" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 5h16v14H4z" />
+                  <path d="M8 9h4" />
+                  <path d="M8 13h8" />
+                  <path d="M16 9h.01" />
+                </svg>
+              </span>
+              <h2>Themes</h2>
+            </button>
             <button type="button" class="settings-card" data-settings-section="metadata">
               <span class="tile-icon icon-browser" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -425,7 +437,7 @@
               </header>
               <label class="setting-toggle">
                 <input type="checkbox" name="display.fullscreenStartup" />
-                <span>Start MediaCenter fullscreen</span>
+                <span>Start ToneOS fullscreen</span>
               </label>
               <label class="setting-toggle">
                 <input type="checkbox" name="display.taskbarReveal" />
@@ -472,6 +484,29 @@
               <label class="setting-field">
                 <span>Pointer speed</span>
                 <input type="range" name="controllers.pointerSpeed" min="1" max="10" step="1" />
+              </label>
+            </section>
+
+            <section class="settings-section" data-settings-panel="themes" hidden>
+              <header>
+                <h2>Themes</h2>
+                <span>Wallpaper and color system</span>
+              </header>
+              <label class="setting-field">
+                <span>Theme</span>
+                <select name="appearance.theme">
+                  <option value="default">Default</option>
+                  <option value="blackGold">Black and gold</option>
+                </select>
+              </label>
+              <label class="setting-field">
+                <span>Wallpaper</span>
+                <select name="appearance.wallpaper">
+                  <option value="default">Default gradient</option>
+                  <option value="defaultTone">Default with ToneOS</option>
+                  <option value="blackGold">Black and gold</option>
+                  <option value="blackGoldTone">Black and gold with ToneOS</option>
+                </select>
               </label>
             </section>
 

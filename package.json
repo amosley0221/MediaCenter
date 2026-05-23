@@ -1,7 +1,7 @@
 {
-  "name": "mediacenter",
+  "name": "toneos",
   "version": "0.1.0",
-  "description": "A home theater media OS prototype for Windows gaming and media PCs.",
+  "description": "ToneOS home theater OS prototype for Windows gaming and media PCs.",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -11,6 +11,7 @@
     "pack:mac": "electron-builder --mac dmg"
   },
   "keywords": [
+    "toneos",
     "media-center",
     "home-theater",
     "electron",
@@ -24,8 +25,8 @@
     "electron-builder": "latest"
   },
   "build": {
-    "appId": "com.mediacenter.desktop",
-    "productName": "MediaCenter",
+    "appId": "com.toneos.desktop",
+    "productName": "ToneOS",
     "asar": true,
     "files": [
       "index.html",

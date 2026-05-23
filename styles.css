@@ -82,6 +82,27 @@ svg {
     auto;
 }
 
+.desktop.wallpaper-default-tone {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.023) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 14% 31%, rgba(240, 58, 165, 0.64), transparent 25%),
+    radial-gradient(circle at 82% 19%, rgba(75, 189, 255, 0.82), transparent 31%),
+    radial-gradient(circle at 70% 94%, rgba(119, 63, 255, 0.76), transparent 35%),
+    linear-gradient(135deg, #db61ae 0%, #5b75d8 46%, #38b7ee 68%, #7a5cf3 100%);
+}
+
+.desktop.wallpaper-black-gold,
+.desktop.wallpaper-black-gold-tone {
+  background:
+    linear-gradient(rgba(255, 204, 86, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 204, 86, 0.07) 1px, transparent 1px),
+    radial-gradient(circle at 18% 25%, rgba(255, 178, 43, 0.34), transparent 26%),
+    radial-gradient(circle at 78% 14%, rgba(255, 218, 106, 0.22), transparent 30%),
+    radial-gradient(circle at 74% 93%, rgba(145, 88, 10, 0.44), transparent 36%),
+    linear-gradient(135deg, #040404 0%, #11100c 46%, #2a1d08 72%, #060606 100%);
+}
+
 .desktop::before {
   position: absolute;
   inset: 0;
@@ -99,6 +120,72 @@ svg {
   content: "";
   background: linear-gradient(rgba(255, 255, 255, 0.05), transparent 34%);
   mix-blend-mode: screen;
+}
+
+.wallpaper-brand {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  z-index: 0;
+  display: none;
+  color: #050506;
+  font-family: Impact, Haettenschweiler, "Arial Black", system-ui, sans-serif;
+  font-size: clamp(84px, 15vw, 240px);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.82;
+  opacity: 0.7;
+  pointer-events: none;
+  text-shadow:
+    3px 0 0 rgba(0, 238, 255, 0.34),
+    -3px 0 0 rgba(255, 0, 126, 0.28),
+    0 18px 38px rgba(0, 0, 0, 0.22);
+  text-transform: uppercase;
+  transform: translate(-50%, -50%) skew(-9deg);
+}
+
+.wallpaper-brand::before,
+.wallpaper-brand::after {
+  position: absolute;
+  left: 0;
+  content: "ToneOS";
+  overflow: hidden;
+}
+
+.wallpaper-brand::before {
+  top: -0.04em;
+  height: 45%;
+  color: rgba(5, 5, 6, 0.86);
+  clip-path: polygon(0 6%, 100% 0, 100% 52%, 0 62%);
+  transform: translateX(0.035em);
+}
+
+.wallpaper-brand::after {
+  bottom: -0.06em;
+  height: 28%;
+  color: rgba(5, 5, 6, 0.78);
+  clip-path: polygon(0 24%, 100% 5%, 100% 80%, 0 100%);
+  transform: translateX(-0.025em);
+}
+
+.desktop.wallpaper-default-tone .wallpaper-brand,
+.desktop.wallpaper-black-gold-tone .wallpaper-brand {
+  display: block;
+}
+
+.desktop.wallpaper-black-gold-tone .wallpaper-brand {
+  color: #d6a93b;
+  opacity: 0.56;
+  text-shadow:
+    3px 0 0 rgba(255, 230, 150, 0.18),
+    -3px 0 0 rgba(118, 72, 9, 0.5),
+    0 18px 38px rgba(0, 0, 0, 0.5);
+}
+
+.desktop.wallpaper-black-gold-tone .wallpaper-brand::before,
+.desktop.wallpaper-black-gold-tone .wallpaper-brand::after {
+  color: rgba(214, 169, 59, 0.76);
 }
 
 .desktop-glow {
@@ -122,6 +209,27 @@ svg {
   right: -10vw;
   bottom: 2vh;
   background: #43c5ff;
+}
+
+.desktop.theme-black-gold {
+  --panel: rgba(17, 14, 7, 0.84);
+  --panel-deep: rgba(4, 4, 4, 0.94);
+  --muted: rgba(255, 224, 153, 0.68);
+}
+
+.desktop.theme-black-gold .desktop-glow-left {
+  background: #d8a231;
+}
+
+.desktop.theme-black-gold .desktop-glow-right {
+  background: #6f4706;
+}
+
+.desktop.theme-black-gold .top-status,
+.desktop.theme-black-gold .bottom-dock,
+.desktop.theme-black-gold .task-switcher {
+  border-color: rgba(255, 207, 89, 0.12);
+  background: rgba(8, 7, 4, 0.84);
 }
 
 .top-status {
@@ -462,6 +570,14 @@ svg {
     linear-gradient(135deg, #392f64 0%, #49438d 44%, #3159a6 100%);
 }
 
+.desktop.theme-black-gold .app-content {
+  border-color: rgba(255, 204, 86, 0.22);
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 177, 38, 0.14), transparent 31%),
+    radial-gradient(circle at 88% 12%, rgba(255, 224, 122, 0.12), transparent 36%),
+    linear-gradient(135deg, #080705 0%, #181209 48%, #302009 100%);
+}
+
 .app-content[hidden] {
   display: none;
 }
@@ -476,6 +592,14 @@ svg {
     radial-gradient(circle at 88% 5%, rgba(67, 202, 255, 0.2), transparent 35%),
     linear-gradient(135deg, #26204a 0%, #323069 46%, #1c4f84 100%);
   scrollbar-width: none;
+}
+
+.desktop.theme-black-gold .app-content.media-center,
+.desktop.theme-black-gold .app-content.settings-app {
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 184, 46, 0.15), transparent 30%),
+    radial-gradient(circle at 88% 5%, rgba(255, 220, 126, 0.12), transparent 35%),
+    linear-gradient(135deg, #060604 0%, #151109 48%, #2c1d08 100%);
 }
 
 .app-content.media-center::-webkit-scrollbar {
@@ -860,7 +984,7 @@ svg {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
 }
 
@@ -976,7 +1100,8 @@ svg {
 }
 
 .setting-field input[type="password"],
-.setting-field input[type="text"] {
+.setting-field input[type="text"],
+.setting-field select {
   min-height: 42px;
   padding: 0 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -986,10 +1111,43 @@ svg {
   font: inherit;
 }
 
+.setting-field select {
+  appearance: none;
+  cursor: var(--cursor-action);
+}
+
 .setting-field input:focus-visible {
   outline: none;
   border-color: rgba(255, 255, 255, 0.34);
   box-shadow: 0 0 0 3px rgba(126, 217, 87, 0.16);
+}
+
+.setting-field select:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow: 0 0 0 3px rgba(126, 217, 87, 0.16);
+}
+
+.desktop.theme-black-gold .setting-field input:focus-visible,
+.desktop.theme-black-gold .setting-field select:focus-visible {
+  box-shadow: 0 0 0 3px rgba(214, 169, 59, 0.18);
+}
+
+.desktop.theme-black-gold .settings-card:hover,
+.desktop.theme-black-gold .settings-card:focus-visible,
+.desktop.theme-black-gold .settings-card.active,
+.desktop.theme-black-gold .setting-toggle,
+.desktop.theme-black-gold .setting-field,
+.desktop.theme-black-gold .settings-panel,
+.desktop.theme-black-gold .source-panel,
+.desktop.theme-black-gold .media-hero,
+.desktop.theme-black-gold .season-panel {
+  border-color: rgba(255, 207, 89, 0.14);
+}
+
+.desktop.theme-black-gold .setting-toggle input[type="checkbox"],
+.desktop.theme-black-gold .setting-field input[type="range"] {
+  accent-color: #d6a93b;
 }
 
 .settings-actions {

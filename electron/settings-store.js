@@ -8,6 +8,10 @@ const DEFAULT_SETTINGS = {
     spatialAudio: false,
     volumeStep: 5,
   },
+  appearance: {
+    theme: "default",
+    wallpaper: "default",
+  },
   controllers: {
     buttonHints: true,
     gamepadNavigation: true,
@@ -34,6 +38,10 @@ function mergeSettings(settings = {}) {
     audio: {
       ...DEFAULT_SETTINGS.audio,
       ...(settings.audio || {}),
+    },
+    appearance: {
+      ...DEFAULT_SETTINGS.appearance,
+      ...(settings.appearance || {}),
     },
     controllers: {
       ...DEFAULT_SETTINGS.controllers,

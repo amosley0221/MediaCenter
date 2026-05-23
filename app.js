@@ -103,6 +103,10 @@ const DEFAULT_APP_SETTINGS = {
     spatialAudio: false,
     volumeStep: 5,
   },
+  appearance: {
+    theme: "default",
+    wallpaper: "default",
+  },
   controllers: {
     buttonHints: true,
     gamepadNavigation: true,
@@ -782,6 +786,10 @@ function mergeAppSettings(settings = {}) {
       ...DEFAULT_APP_SETTINGS.audio,
       ...(settings.audio || {}),
     },
+    appearance: {
+      ...DEFAULT_APP_SETTINGS.appearance,
+      ...(settings.appearance || {}),
+    },
     controllers: {
       ...DEFAULT_APP_SETTINGS.controllers,
       ...(settings.controllers || {}),
@@ -880,6 +888,23 @@ function readSettingsForm() {
 
 function applyAppSettings(settings) {
   appSettings = mergeAppSettings(settings);
+  desktop.classList.remove(
+    "theme-default",
+    "theme-black-gold",
+    "wallpaper-default",
+    "wallpaper-default-tone",
+    "wallpaper-black-gold",
+    "wallpaper-black-gold-tone",
+  );
+  desktop.classList.add(
+    appSettings.appearance.theme === "blackGold" ? "theme-black-gold" : "theme-default",
+    {
+      default: "wallpaper-default",
+      defaultTone: "wallpaper-default-tone",
+      blackGold: "wallpaper-black-gold",
+      blackGoldTone: "wallpaper-black-gold-tone",
+    }[appSettings.appearance.wallpaper] || "wallpaper-default",
+  );
   desktop.style.setProperty("--overscan", `${Math.max(0, Number(appSettings.display.overscan) || 0)}px`);
   desktop.classList.toggle("disable-taskbar-reveal", !appSettings.display.taskbarReveal);
   desktop.classList.toggle("night-mode", appSettings.audio.nightMode);
@@ -2938,7 +2963,7 @@ function applyStartupState() {
       openBrowser(browserTargetParam || undefined);
     } else if (normalizedApp === "settings") {
       openSettings();
-    } else if (normalizedApp === "mediacenter") {
+    } else if (normalizedApp === "toneos" || normalizedApp === "mediacenter") {
       openMediaCenter("home");
     } else if (mediaLibrary.some((group) => group.section === normalizedApp)) {
       openMediaCenter(normalizedApp);
