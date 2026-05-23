@@ -55,6 +55,11 @@ const settingsPanels = [...document.querySelectorAll(".settings-section")];
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const settingSelects = [...document.querySelectorAll("[data-setting-select]")];
+const serverFolderButtons = [...document.querySelectorAll("[data-server-source]")];
+const mediaServerState = document.querySelector("#mediaServerState");
+const mediaServerUrls = document.querySelector("#mediaServerUrls");
+const refreshMediaServerStatus = document.querySelector("#refreshMediaServerStatus");
+const openMediaServerClient = document.querySelector("#openMediaServerClient");
 const desktopBridge = window.mediaCenterDesktop || null;
 
 const MIN_WINDOW_WIDTH = 520;
@@ -127,6 +132,15 @@ const DEFAULT_APP_SETTINGS = {
     steamArtworkEnabled: true,
     tmdbApiKey: "",
     tmdbEnabled: false,
+  },
+  mediaServer: {
+    directPlay: true,
+    discovery: true,
+    enabled: false,
+    name: "ToneOS Living Room",
+    pin: "",
+    port: 8096,
+    sameNetworkOnly: true,
   },
 };
 
@@ -738,6 +752,13 @@ const sourcePresets = {
     status: "Ready",
     title: "Local Media Files",
   },
+  movies: {
+    detail: "Movie files served locally and over the ToneOS Media Server",
+    iconClass: "poster-movies",
+    path: "D:\\Media\\Movies",
+    status: "Ready",
+    title: "Movies Folder",
+  },
   network: {
     detail: "NAS or shared folders from another PC",
     iconClass: "poster-streaming",
@@ -751,6 +772,13 @@ const sourcePresets = {
     path: "C:\\Program Files (x86)\\Steam\\steamapps",
     status: "Scanned",
     title: "Steam Library",
+  },
+  tv: {
+    detail: "TV episodes grouped by series and season for server clients",
+    iconClass: "poster-tv",
+    path: "D:\\Media\\TV Shows",
+    status: "Ready",
+    title: "TV Shows Folder",
   },
   watch: {
     detail: "Auto-rescan when new media files are added",
@@ -803,6 +831,10 @@ function mergeAppSettings(settings = {}) {
     metadata: {
       ...DEFAULT_APP_SETTINGS.metadata,
       ...(settings.metadata || {}),
+    },
+    mediaServer: {
+      ...DEFAULT_APP_SETTINGS.mediaServer,
+      ...(settings.mediaServer || {}),
     },
   };
 }
@@ -1002,6 +1034,7 @@ async function loadAppSettings() {
   applyAppSettings(loadedSettings);
   populateSettingsForm(appSettings);
   setSettingsStatus("Settings loaded.");
+  refreshMediaServerStatusView();
 
   if (appSettings.display.launchMediaCenter && !new URLSearchParams(window.location.search).get("app") && appWindow.hidden) {
     openMediaCenter("home");
@@ -1022,6 +1055,65 @@ async function saveAppSettings(settings, statusText = "Settings saved.") {
 
   populateSettingsForm(appSettings);
   setSettingsStatus(statusText);
+  refreshMediaServerStatusView();
+}
+
+function renderMediaServerStatus(status = null) {
+  if (!mediaServerState || !mediaServerUrls) {
+    return;
+  }
+
+  if (!appSettings.mediaServer.enabled) {
+    mediaServerState.textContent = "Off";
+    mediaServerUrls.textContent = "Enable the server and save settings to create client links.";
+    return;
+  }
+
+  if (!status) {
+    mediaServerState.textContent = "Checking...";
+    mediaServerUrls.textContent = "Reading server status.";
+    return;
+  }
+
+  if (status.error) {
+    mediaServerState.textContent = "Error";
+    mediaServerUrls.textContent = status.error;
+    return;
+  }
+
+  if (!status.running) {
+    mediaServerState.textContent = "Not running";
+    mediaServerUrls.textContent = "Save settings to start the server.";
+    return;
+  }
+
+  mediaServerState.textContent = status.discovery?.enabled ? "Running with discovery" : "Running";
+  mediaServerUrls.textContent = status.urls?.length
+    ? status.urls.join("  ")
+    : `http://127.0.0.1:${status.port || appSettings.mediaServer.port}/`;
+}
+
+async function refreshMediaServerStatusView() {
+  if (!mediaServerState || !mediaServerUrls) {
+    return null;
+  }
+
+  if (!canUseDesktopBridge() || typeof desktopBridge.getMediaServerStatus !== "function") {
+    renderMediaServerStatus();
+    return null;
+  }
+
+  renderMediaServerStatus(null);
+
+  try {
+    const status = await desktopBridge.getMediaServerStatus();
+    renderMediaServerStatus(status);
+    return status;
+  } catch {
+    mediaServerState.textContent = "Unavailable";
+    mediaServerUrls.textContent = "Media Server runs in the Electron desktop app.";
+    return null;
+  }
 }
 
 function loadBrowserHome() {
@@ -1834,11 +1926,15 @@ async function addFolderSource(sourceKey) {
     registerOpenWindow(lastOpenedApp);
   }
 
-  if (sourceKey === "books" || sourceKey === "local" || sourceKey === "network" || sourceKey === "watch") {
+  if (sourceKey === "books" || sourceKey === "local" || sourceKey === "movies" || sourceKey === "network" || sourceKey === "tv" || sourceKey === "watch") {
     const summary = scanResult?.summary || {};
     const targetSection =
       sourceKey === "books"
         ? "books"
+        : sourceKey === "movies"
+          ? "movies"
+          : sourceKey === "tv"
+            ? "tv"
         : ["movies", "tv", "music", "books"].find((section) => summary[section] > 0) || "home";
 
     renderMediaCenter(targetSection);
@@ -2692,6 +2788,9 @@ settingsButton.addEventListener("click", () => {
 settingsCards.forEach((card) => {
   card.addEventListener("click", () => {
     setSettingsSection(card.dataset.settingsSection);
+    if (card.dataset.settingsSection === "server") {
+      refreshMediaServerStatusView();
+    }
   });
 });
 
@@ -2748,10 +2847,45 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+serverFolderButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    const sourceKey = button.dataset.serverSource;
+    button.disabled = true;
+    button.classList.add("is-busy");
+    setSettingsStatus(`Adding ${sourcePresets[sourceKey]?.title || "folder"}...`);
+
+    try {
+      await addFolderSource(sourceKey);
+      setSettingsStatus("Folder scanned for MediaCenter and Media Server.");
+      refreshMediaServerStatusView();
+    } catch {
+      setSettingsStatus("Could not scan that folder.");
+    } finally {
+      button.disabled = false;
+      button.classList.remove("is-busy");
+    }
+  });
+});
+
+refreshMediaServerStatus?.addEventListener("click", () => {
+  refreshMediaServerStatusView();
+});
+
+openMediaServerClient?.addEventListener("click", async () => {
+  if (!canUseDesktopBridge() || typeof desktopBridge.openMediaServerClient !== "function") {
+    setSettingsStatus("Media Server client opens from the Electron app.");
+    return;
+  }
+
+  const status = await desktopBridge.openMediaServerClient();
+  renderMediaServerStatus(status);
+});
+
 settingsForm.addEventListener("input", () => {
   const nextSettings = readSettingsForm();
   applyAppSettings(nextSettings);
   setSettingsStatus("Unsaved changes.");
+  renderMediaServerStatus();
 });
 
 settingsForm.addEventListener("submit", (event) => {

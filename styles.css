@@ -1237,12 +1237,22 @@ svg {
   accent-color: #7ed957;
 }
 
+.setting-disabled {
+  opacity: 0.58;
+}
+
+.setting-disabled input,
+.setting-disabled span {
+  cursor: not-allowed;
+}
+
 .setting-field input[type="range"] {
   width: 100%;
   accent-color: #7ed957;
 }
 
 .setting-field input[type="password"],
+.setting-field input[type="number"],
 .setting-field input[type="text"],
 .setting-field select {
   min-height: 42px;
@@ -1257,6 +1267,16 @@ svg {
 .setting-field select {
   appearance: none;
   cursor: var(--cursor-action);
+}
+
+.setting-field input[type="number"] {
+  appearance: textfield;
+}
+
+.setting-field input[type="number"]::-webkit-inner-spin-button,
+.setting-field input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
 }
 
 .setting-field input:focus-visible {
@@ -1454,6 +1474,79 @@ svg {
   background:
     linear-gradient(145deg, rgba(36, 28, 10, 0.97), rgba(6, 6, 6, 0.97)),
     rgba(8, 7, 4, 0.94);
+}
+
+.setting-server-panel {
+  grid-column: 1 / -1;
+}
+
+.server-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.server-actions.compact {
+  gap: 8px;
+}
+
+.server-folder-button,
+.server-actions.compact button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 650;
+}
+
+.server-folder-button:hover,
+.server-folder-button:focus-visible,
+.server-actions.compact button:hover,
+.server-actions.compact button:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.server-folder-button:disabled,
+.server-folder-button.is-busy {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.server-folder-button .source-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.server-status-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.13);
+}
+
+.server-status-card strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+}
+
+.server-status-card code {
+  overflow-wrap: anywhere;
+  color: rgba(255, 255, 255, 0.68);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1.45;
 }
 
 .desktop.theme-black-gold .settings-card:hover,

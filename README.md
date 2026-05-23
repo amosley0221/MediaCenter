@@ -22,6 +22,12 @@ For a windowed development launch instead of fullscreen:
 MEDIA_CENTER_WINDOWED=1 npm start
 ```
 
+## Media Server
+
+Open `Settings > Media Server`, turn on `Enable ToneOS Media Server`, add movies and TV folders, then save settings. When the server is running, the status panel shows local client URLs such as `http://192.168.1.50:8096/` for phones, tablets, laptops, or another PC on the same network.
+
+Same-network access is enabled by default. Add a PIN/password before sharing the client URL with other devices.
+
 ## Desktop Features Wired
 
 - Electron `webview` browser surface for live sites that block iframe embedding.
@@ -36,6 +42,9 @@ MEDIA_CENTER_WINDOWED=1 npm start
 - Display settings can optionally open MediaCenter automatically after ToneOS starts.
 - ToneOS theme settings control the OS color system and wallpaper variants.
 - Wallpaper options include the default gradient, default gradient with ToneOS branding, black/gold, and black/gold with ToneOS branding.
+- Media Server settings are off by default and can serve movies and TV shows to same-network devices from a built-in Electron HTTP server.
+- Media Server supports movies/TV folder scans, LAN-only access, optional PIN/password protection, UDP discovery beacons, and direct-play streaming for compatible video files.
+- FFmpeg transcoding is represented as a planned capability; the current server direct-plays files the client device can already decode.
 - Optional metadata providers can enrich scanned libraries:
   - TMDb for movie and TV poster/backdrop metadata with a TMDb API key.
   - RAWG for game artwork/details with a RAWG API key.

@@ -428,6 +428,14 @@ function getFileKind(filePath, sourceKey) {
     return "books";
   }
 
+  if (sourceKey === "movies" && VIDEO_EXTENSIONS.has(extension)) {
+    return "movies";
+  }
+
+  if (sourceKey === "tv" && VIDEO_EXTENSIONS.has(extension)) {
+    return "tv";
+  }
+
   if (VIDEO_EXTENSIONS.has(extension)) {
     return parseTvEpisode(filePath) ? "tv" : "movies";
   }
@@ -445,6 +453,20 @@ function getFileKind(filePath, sourceKey) {
   }
 
   return null;
+}
+
+function inferTvEpisode(filePath) {
+  const seasonFolderMatch = path.basename(path.dirname(filePath)).match(/season[\s._-]*(\d{1,2})/i);
+  const seriesFolder = seasonFolderMatch
+    ? path.basename(path.dirname(path.dirname(filePath)))
+    : path.basename(path.dirname(filePath));
+
+  return {
+    episodeNumber: 1,
+    episodeTitle: cleanMediaTitle(filePath),
+    seasonNumber: seasonFolderMatch ? Number(seasonFolderMatch[1]) : 1,
+    seriesTitle: toTitleCase(seriesFolder.replace(/[._-]+/g, " ").trim() || cleanMediaTitle(filePath)),
+  };
 }
 
 function createScannedItem(filePath, sourceKey, sourceId, stats) {
@@ -469,7 +491,7 @@ function createScannedItem(filePath, sourceKey, sourceId, stats) {
   }
 
   if (section === "tv") {
-    const episode = parseTvEpisode(filePath);
+    const episode = parseTvEpisode(filePath) || inferTvEpisode(filePath);
 
     return {
       ...baseItem,

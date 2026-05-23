@@ -32,6 +32,15 @@ const DEFAULT_SETTINGS = {
     tmdbApiKey: "",
     tmdbEnabled: false,
   },
+  mediaServer: {
+    directPlay: true,
+    discovery: true,
+    enabled: false,
+    name: "ToneOS Living Room",
+    pin: "",
+    port: 8096,
+    sameNetworkOnly: true,
+  },
 };
 
 function mergeSettings(settings = {}) {
@@ -55,6 +64,10 @@ function mergeSettings(settings = {}) {
     metadata: {
       ...DEFAULT_SETTINGS.metadata,
       ...(settings.metadata || {}),
+    },
+    mediaServer: {
+      ...DEFAULT_SETTINGS.mediaServer,
+      ...(settings.mediaServer || {}),
     },
   };
 }

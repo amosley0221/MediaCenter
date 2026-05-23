@@ -221,6 +221,16 @@
                   <strong>Local Media Files</strong>
                   <span>Movies, TV, music, photos, and mixed media from local files or folders.</span>
                 </button>
+                <button type="button" class="source-action" data-source="movies">
+                  <span class="source-icon poster-movies" aria-hidden="true">MV</span>
+                  <strong>Movies Folder</strong>
+                  <span>Import local movie files for MediaCenter and ToneOS Media Server.</span>
+                </button>
+                <button type="button" class="source-action" data-source="tv">
+                  <span class="source-icon poster-tv" aria-hidden="true">TV</span>
+                  <strong>TV Shows Folder</strong>
+                  <span>Import TV folders and episodes with season grouping for remote clients.</span>
+                </button>
                 <button type="button" class="source-action" data-source="watch">
                   <span class="source-icon poster-tv" aria-hidden="true">WF</span>
                   <strong>Watch Folder</strong>
@@ -437,6 +447,18 @@
               </span>
               <h2>Metadata</h2>
             </button>
+            <button type="button" class="settings-card" data-settings-section="server">
+              <span class="tile-icon icon-streaming" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="5" width="16" height="11" rx="2" />
+                  <path d="M8 20h8" />
+                  <path d="M12 16v4" />
+                  <path d="M8.5 10.5a5 5 0 0 1 7 0" />
+                  <path d="M10.5 12.5a2.2 2.2 0 0 1 3 0" />
+                </svg>
+              </span>
+              <h2>Media Server</h2>
+            </button>
           </section>
 
           <form class="settings-panel" id="settingsForm">
@@ -605,6 +627,69 @@
                 <input type="checkbox" name="metadata.steamArtworkEnabled" />
                 <span>Steam artwork</span>
               </label>
+            </section>
+
+            <section class="settings-section" data-settings-panel="server" hidden>
+              <header>
+                <h2>Media Server</h2>
+                <span>Same-network streaming</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="mediaServer.enabled" />
+                <span>Enable ToneOS Media Server</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="mediaServer.sameNetworkOnly" />
+                <span>Only allow same-network devices</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="mediaServer.discovery" />
+                <span>Broadcast server for device discovery</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="mediaServer.directPlay" />
+                <span>Direct play compatible video files</span>
+              </label>
+              <label class="setting-field">
+                <span>Server name</span>
+                <input type="text" name="mediaServer.name" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>Port</span>
+                <input type="number" name="mediaServer.port" min="1024" max="65535" step="1" />
+              </label>
+              <label class="setting-field">
+                <span>PIN / password</span>
+                <input type="password" name="mediaServer.pin" autocomplete="new-password" spellcheck="false" />
+              </label>
+              <div class="setting-toggle setting-disabled" aria-disabled="true">
+                <input type="checkbox" disabled />
+                <span>FFmpeg transcoding planned</span>
+              </div>
+              <div class="setting-field setting-server-panel">
+                <span>Shared folders</span>
+                <div class="server-actions">
+                  <button type="button" class="server-folder-button" data-server-source="movies">
+                    <span class="source-icon poster-movies" aria-hidden="true">MV</span>
+                    <strong>Add movies folder</strong>
+                  </button>
+                  <button type="button" class="server-folder-button" data-server-source="tv">
+                    <span class="source-icon poster-tv" aria-hidden="true">TV</span>
+                    <strong>Add TV shows folder</strong>
+                  </button>
+                </div>
+              </div>
+              <div class="setting-field setting-server-panel">
+                <span>Server status</span>
+                <div class="server-status-card">
+                  <strong id="mediaServerState">Off</strong>
+                  <code id="mediaServerUrls">Enable the server and save settings to create client links.</code>
+                  <div class="server-actions compact">
+                    <button type="button" id="refreshMediaServerStatus">Refresh</button>
+                    <button type="button" id="openMediaServerClient">Open client</button>
+                  </div>
+                </div>
+              </div>
             </section>
 
             <footer class="settings-actions">
