@@ -32,6 +32,18 @@ const DEFAULT_SETTINGS = {
     tmdbApiKey: "",
     tmdbEnabled: false,
   },
+  streamingProviders: {
+    twitchAccessToken: "",
+    twitchChannels: "",
+    twitchClientId: "",
+    twitchEnabled: false,
+    twitchUserLogin: "",
+    youtubeAccessToken: "",
+    youtubeApiKey: "",
+    youtubeChannels: "",
+    youtubeEnabled: false,
+    youtubeSearches: "",
+  },
   mediaServer: {
     directPlay: true,
     discovery: true,
@@ -64,6 +76,10 @@ function mergeSettings(settings = {}) {
     metadata: {
       ...DEFAULT_SETTINGS.metadata,
       ...(settings.metadata || {}),
+    },
+    streamingProviders: {
+      ...DEFAULT_SETTINGS.streamingProviders,
+      ...(settings.streamingProviders || {}),
     },
     mediaServer: {
       ...DEFAULT_SETTINGS.mediaServer,

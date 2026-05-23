@@ -4,6 +4,7 @@ const { loadLibrary, upsertScannedSource, upsertSteamScan } = require("./media-l
 const { createMediaServer } = require("./media-server");
 const { loadSettings, loadSettingsSync, saveSettings } = require("./settings-store");
 const { scanSteamLibraries } = require("./steam-scanner");
+const { loadStreamingData } = require("./streaming-providers");
 
 const SOURCE_TITLES = {
   books: "Choose books, comics, or a reading folder",
@@ -176,6 +177,11 @@ ipcMain.handle("media:open-item", async (_event, item = {}) => {
   }
 
   return { ok: false, error: "No playable path was available for this item." };
+});
+
+ipcMain.handle("streaming:load", async () => {
+  const settings = await loadSettings(getSettingsPath());
+  return loadStreamingData(settings.streamingProviders);
 });
 
 ipcMain.handle("settings:load", async () => {

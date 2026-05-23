@@ -710,6 +710,71 @@
                 <input type="checkbox" name="metadata.steamArtworkEnabled" />
                 <span>Steam artwork</span>
               </label>
+              <div class="settings-subhead">
+                <h3>Streaming Data</h3>
+                <span id="streamingProviderStatus">Provider data has not refreshed yet.</span>
+              </div>
+              <label class="setting-toggle">
+                <input type="checkbox" name="streamingProviders.youtubeEnabled" />
+                <span>YouTube Data API</span>
+              </label>
+              <label class="setting-field">
+                <span>YouTube API key</span>
+                <input type="password" name="streamingProviders.youtubeApiKey" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>YouTube OAuth token</span>
+                <input type="password" name="streamingProviders.youtubeAccessToken" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>YouTube channels or handles</span>
+                <input
+                  type="text"
+                  name="streamingProviders.youtubeChannels"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="@mkbhd, UC..."
+                />
+              </label>
+              <label class="setting-field">
+                <span>YouTube searches</span>
+                <input
+                  type="text"
+                  name="streamingProviders.youtubeSearches"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="home theater, gaming news"
+                />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="streamingProviders.twitchEnabled" />
+                <span>Twitch Helix API</span>
+              </label>
+              <label class="setting-field">
+                <span>Twitch Client ID</span>
+                <input type="password" name="streamingProviders.twitchClientId" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>Twitch access token</span>
+                <input type="password" name="streamingProviders.twitchAccessToken" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>Your Twitch login</span>
+                <input type="text" name="streamingProviders.twitchUserLogin" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>Twitch channels</span>
+                <input
+                  type="text"
+                  name="streamingProviders.twitchChannels"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="lirik, esl_csgo"
+                />
+              </label>
+              <button type="button" class="setting-action-button" id="refreshStreamingProviders">
+                Refresh streaming data
+              </button>
             </section>
 
             <section class="settings-section" data-settings-panel="server" hidden>

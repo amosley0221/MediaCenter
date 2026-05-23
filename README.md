@@ -51,6 +51,10 @@ Same-network access is enabled by default. Add a PIN/password before sharing the
   - Open Library for book cover/author metadata.
   - MusicBrainz for music recording metadata.
   - Steam artwork from public Steam CDN URLs.
+- Optional streaming providers can populate the Streaming section with real live/recent data:
+  - YouTube Data API can load live/latest videos from saved channel IDs, handles, search topics, or OAuth subscription data.
+  - Twitch Helix API can load live followed streams and saved channels with a Client ID and access token.
+  - Signed-in YouTube/Twitch browser sessions are still used for playback, chat, comments, quality controls, and fullscreen.
 
 ## Packaging
 

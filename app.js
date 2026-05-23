@@ -66,6 +66,8 @@ const settingsPanels = [...document.querySelectorAll(".settings-section")];
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const settingSelects = [...document.querySelectorAll("[data-setting-select]")];
+const streamingProviderStatus = document.querySelector("#streamingProviderStatus");
+const refreshStreamingProviders = document.querySelector("#refreshStreamingProviders");
 const serverFolderButtons = [...document.querySelectorAll("[data-server-source]")];
 const mediaServerState = document.querySelector("#mediaServerState");
 const mediaServerUrls = document.querySelector("#mediaServerUrls");
@@ -86,6 +88,7 @@ const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
 const BROWSER_STARTUP_STORAGE_KEY = "mediacenter.browser.startup.v1";
 const BROWSER_TABS_STORAGE_KEY = "mediacenter.browser.tabs.v1";
 const APP_SETTINGS_STORAGE_KEY = "mediacenter.settings.v1";
+const STREAMING_PROVIDER_SOURCE = "streaming-provider";
 const BROWSER_SCROLLBAR_CSS = `
 html,
 body {
@@ -163,6 +166,18 @@ const DEFAULT_APP_SETTINGS = {
     steamArtworkEnabled: true,
     tmdbApiKey: "",
     tmdbEnabled: false,
+  },
+  streamingProviders: {
+    twitchAccessToken: "",
+    twitchChannels: "",
+    twitchClientId: "",
+    twitchEnabled: false,
+    twitchUserLogin: "",
+    youtubeAccessToken: "",
+    youtubeApiKey: "",
+    youtubeChannels: "",
+    youtubeEnabled: false,
+    youtubeSearches: "",
   },
   mediaServer: {
     directPlay: true,
@@ -353,97 +368,20 @@ const mediaCatalog = {
     },
     shelves: [
       {
-        title: "Continue Across Services",
-        items: [
-          {
-            title: "MKBHD: Studio Tour",
-            meta: "YouTube | 12 min left",
-            progress: 62,
-            brand: "youtube",
-            status: "Connected",
-            target: "https://www.youtube.com/results?search_query=MKBHD%20Studio%20Tour",
-          },
-          {
-            title: "LIRIK Live",
-            meta: "Twitch | Live channel",
-            progress: 18,
-            brand: "twitch",
-            status: "Live",
-            target: "https://www.twitch.tv/lirik",
-          },
-          {
-            title: "Lakers vs Warriors",
-            meta: "YouTube TV | Live TV",
-            progress: 34,
-            brand: "youtube-tv",
-            status: "Live",
-            target: "https://tv.youtube.com/",
-          },
-          {
-            title: "Stranger Things",
-            meta: "Netflix | S4 E06",
-            progress: 51,
-            brand: "netflix",
-            status: "Portal",
-            target: "https://www.netflix.com/search?q=Stranger%20Things",
-          },
-        ],
-      },
-      {
-        title: "Live Now",
-        items: [
-          {
-            title: "Twitch Following",
-            meta: "8 channels live",
-            brand: "twitch",
-            status: "Live",
-            target: "https://www.twitch.tv/directory/following/live",
-          },
-          {
-            title: "YouTube Live",
-            meta: "Subscriptions live",
-            brand: "youtube",
-            status: "Live",
-            target: "https://www.youtube.com/results?search_query=live",
-          },
-          {
-            title: "YouTube TV Guide",
-            meta: "Sports, news, DVR",
-            brand: "youtube-tv",
-            status: "Live",
-            target: "https://tv.youtube.com/",
-          },
-          {
-            title: "Prime Video Sports",
-            meta: "Thursday Night Football",
-            brand: "prime",
-            status: "Live",
-            target: "https://www.primevideo.com/",
-          },
-          {
-            title: "Hulu Live",
-            meta: "News and sports",
-            brand: "hulu",
-            status: "Live",
-            target: "https://www.hulu.com/live-tv",
-          },
-        ],
-      },
-      {
         title: "Linked Services",
         items: [
           {
             title: "YouTube",
-            meta: "Subscriptions, playlists, history",
+            meta: "Portal launcher",
             brand: "youtube",
-            status: "Connected",
+            status: "Open",
             target: "https://www.youtube.com/",
           },
           {
             title: "Twitch",
-            meta: "Following, live channels, VODs",
+            meta: "Portal launcher",
             brand: "twitch",
-            status: "Connected",
+            status: "Open",
             target: "https://www.twitch.tv/",
           },
           {
@@ -481,16 +419,6 @@ const mediaCatalog = {
             status: "Sign in",
             target: "https://www.primevideo.com/",
           },
-        ],
-      },
-      {
-        title: "Unified Watchlist",
-        items: [
-          { title: "The Studio", meta: "Apple TV | Watchlist", brand: "apple", status: "Saved" },
-          { title: "Drive to Survive", meta: "Netflix | Watchlist", brand: "netflix", status: "Saved" },
-          { title: "House Tour Playlist", meta: "YouTube | Playlist", brand: "youtube", status: "Saved" },
-          { title: "Fallout", meta: "Prime Video | Watchlist", brand: "prime", status: "Saved" },
-          { title: "The Bear", meta: "Hulu | Watchlist", brand: "hulu", status: "Saved" },
         ],
       },
     ],
@@ -670,14 +598,6 @@ const mediaHome = {
       items: [
         { title: "Dune: Part Two", meta: "Movie | 42 min left", progress: 76, section: "movies" },
         { title: "Foundation", meta: "TV | S2 E04", progress: 48, section: "tv" },
-        {
-          title: "LIRIK Live",
-          meta: "Twitch | Live channel",
-          progress: 18,
-          section: "streaming",
-          brand: "twitch",
-          status: "Live",
-        },
         { title: "Forza Horizon 5", meta: "Game | Resume", progress: 90, section: "games" },
         { title: "Project Hail Mary", meta: "Book | 63%", progress: 63, section: "books" },
         { title: "Late Night Drive", meta: "Music | Smart mix", progress: 48, section: "music" },
@@ -688,7 +608,6 @@ const mediaHome = {
       items: [
         { title: "Furiosa", meta: "Movie | Added today", section: "movies" },
         { title: "Andor", meta: "TV | New episode", section: "tv" },
-        { title: "MKBHD: Studio Tour", meta: "YouTube | New upload", section: "streaming", brand: "youtube" },
         { title: "Hades II", meta: "Game | Added today", section: "games" },
         { title: "The Creative Act", meta: "Book | New", section: "books" },
         { title: "Cowboy Carter", meta: "Music | New album", section: "music" },
@@ -699,18 +618,18 @@ const mediaHome = {
       items: [
         {
           title: "YouTube",
-          meta: "Connected | Playlists",
+          meta: "Portal launcher",
           section: "streaming",
           brand: "youtube",
-          status: "Connected",
+          status: "Open",
           target: "https://www.youtube.com/",
         },
         {
           title: "Twitch",
-          meta: "Connected | Live channels",
+          meta: "Portal launcher",
           section: "streaming",
           brand: "twitch",
-          status: "Connected",
+          status: "Open",
           target: "https://www.twitch.tv/",
         },
         {
@@ -837,6 +756,7 @@ let taskSwitcherPinned = false;
 let taskSwitcherCloseTimer = null;
 let mediaSources = getInitialMediaSources();
 let desktopLibrary = null;
+let streamingProviderData = null;
 let appSettings = mergeAppSettings();
 let browserHomeUrl = loadBrowserHome();
 let browserStartupMode = loadBrowserStartupMode();
@@ -871,6 +791,10 @@ function mergeAppSettings(settings = {}) {
     metadata: {
       ...DEFAULT_APP_SETTINGS.metadata,
       ...(settings.metadata || {}),
+    },
+    streamingProviders: {
+      ...DEFAULT_APP_SETTINGS.streamingProviders,
+      ...(settings.streamingProviders || {}),
     },
     mediaServer: {
       ...DEFAULT_APP_SETTINGS.mediaServer,
@@ -1075,6 +999,7 @@ async function loadAppSettings() {
   populateSettingsForm(appSettings);
   setSettingsStatus("Settings loaded.");
   refreshMediaServerStatusView();
+  renderStreamingProviderStatus();
 
   if (appSettings.display.launchMediaCenter && !new URLSearchParams(window.location.search).get("app") && appWindow.hidden) {
     openMediaCenter("home");
@@ -1096,6 +1021,7 @@ async function saveAppSettings(settings, statusText = "Settings saved.") {
   populateSettingsForm(appSettings);
   setSettingsStatus(statusText);
   refreshMediaServerStatusView();
+  loadStreamingProviderData();
 }
 
 function renderMediaServerStatus(status = null) {
@@ -1502,6 +1428,153 @@ function applyDesktopLibrary(library) {
 
   if (!appViews.media.hidden) {
     renderMediaCenter(currentMediaSection);
+  }
+}
+
+function removeStreamingProviderShelves(config) {
+  config.shelves = config.shelves.filter((shelf) => shelf.source !== STREAMING_PROVIDER_SOURCE);
+}
+
+function normalizeStreamingProviderItem(item) {
+  return {
+    ...item,
+    meta: item.meta || "Streaming",
+    section: "streaming",
+  };
+}
+
+function normalizeStreamingProviderShelf(shelf) {
+  const items = (shelf.items || []).map(normalizeStreamingProviderItem).filter((item) => item.title);
+
+  if (!items.length) {
+    return null;
+  }
+
+  return {
+    ...shelf,
+    items,
+    source: STREAMING_PROVIDER_SOURCE,
+  };
+}
+
+function renderStreamingProviderStatus() {
+  if (!streamingProviderStatus) {
+    return;
+  }
+
+  const providerSettings = appSettings.streamingProviders || {};
+  const providerEnabled = Boolean(providerSettings.youtubeEnabled || providerSettings.twitchEnabled);
+
+  if (!canUseDesktopBridge() || typeof desktopBridge.loadStreamingData !== "function") {
+    streamingProviderStatus.textContent = "Streaming data refreshes in the Electron desktop app.";
+    return;
+  }
+
+  if (!providerEnabled) {
+    streamingProviderStatus.textContent = "YouTube and Twitch live data are off.";
+    return;
+  }
+
+  if (!streamingProviderData) {
+    streamingProviderStatus.textContent = "Provider data has not refreshed yet.";
+    return;
+  }
+
+  const itemCount = (streamingProviderData.shelves || []).reduce((count, shelf) => count + (shelf.items?.length || 0), 0);
+  const messages = streamingProviderData.messages || [];
+
+  if (itemCount > 0) {
+    const time = streamingProviderData.updatedAt
+      ? new Date(streamingProviderData.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : "now";
+    streamingProviderStatus.textContent = `${itemCount} real streaming items refreshed at ${time}.`;
+    return;
+  }
+
+  streamingProviderStatus.textContent = messages[0] || "No real streaming items were returned yet.";
+}
+
+function createProviderStatusShelf(messages = []) {
+  const providerSettings = appSettings.streamingProviders || {};
+  const providerEnabled = Boolean(providerSettings.youtubeEnabled || providerSettings.twitchEnabled);
+
+  if (!providerEnabled || messages.length === 0) {
+    return null;
+  }
+
+  return {
+    source: STREAMING_PROVIDER_SOURCE,
+    title: "Streaming Provider Status",
+    items: messages.slice(0, 6).map((message) => {
+      const isTwitch = message.toLowerCase().includes("twitch");
+      return {
+        brand: isTwitch ? "twitch" : "youtube",
+        meta: message,
+        section: "streaming",
+        status: "Check",
+        target: isTwitch
+          ? "https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/"
+          : "https://developers.google.com/youtube/v3/getting-started",
+        title: isTwitch ? "Twitch data" : "YouTube data",
+      };
+    }),
+  };
+}
+
+function applyStreamingProviderData(data) {
+  streamingProviderData = data || { homeItems: [], messages: [], shelves: [] };
+  removeStreamingProviderShelves(mediaHome);
+  removeStreamingProviderShelves(mediaCatalog.streaming);
+
+  const providerShelves = (streamingProviderData.shelves || [])
+    .map(normalizeStreamingProviderShelf)
+    .filter(Boolean);
+  const statusShelf = createProviderStatusShelf(streamingProviderData.messages || []);
+  const homeItems = (streamingProviderData.homeItems || []).map(normalizeStreamingProviderItem);
+
+  if (statusShelf && providerShelves.length === 0) {
+    providerShelves.push(statusShelf);
+  }
+
+  if (providerShelves.length) {
+    mediaCatalog.streaming.shelves.unshift(...providerShelves);
+  }
+
+  if (homeItems.length) {
+    mediaHome.shelves.unshift({
+      source: STREAMING_PROVIDER_SOURCE,
+      title: "Live & New From Streaming",
+      items: homeItems.slice(0, 18),
+    });
+  }
+
+  renderStreamingProviderStatus();
+
+  if (!appViews.media.hidden && ["home", "streaming"].includes(currentMediaSection)) {
+    renderMediaCenter(currentMediaSection);
+  }
+}
+
+async function loadStreamingProviderData() {
+  renderStreamingProviderStatus();
+
+  if (!canUseDesktopBridge() || typeof desktopBridge.loadStreamingData !== "function") {
+    return;
+  }
+
+  if (streamingProviderStatus) {
+    streamingProviderStatus.textContent = "Refreshing YouTube and Twitch data...";
+  }
+
+  try {
+    applyStreamingProviderData(await desktopBridge.loadStreamingData());
+  } catch (error) {
+    applyStreamingProviderData({
+      homeItems: [],
+      messages: [`Streaming refresh failed: ${error.message || "Unable to load providers."}`],
+      shelves: [],
+      updatedAt: new Date().toISOString(),
+    });
   }
 }
 
@@ -3412,11 +3485,16 @@ settingsForm.addEventListener("input", () => {
   applyAppSettings(nextSettings);
   setSettingsStatus("Unsaved changes.");
   renderMediaServerStatus();
+  renderStreamingProviderStatus();
 });
 
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveAppSettings(readSettingsForm());
+});
+
+refreshStreamingProviders?.addEventListener("click", () => {
+  saveAppSettings(readSettingsForm(), "Streaming data refreshed.");
 });
 
 mediaHeroPrimaryButton.addEventListener("click", () => {
@@ -3842,5 +3920,5 @@ updateClock();
 renderBrowserTabs();
 setInterval(updateClock, 1000 * 15);
 applyStartupState();
-loadAppSettings();
+loadAppSettings().then(loadStreamingProviderData);
 loadDesktopLibrary();

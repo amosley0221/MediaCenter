@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld(
     scanSteamLibrary: () => ipcRenderer.invoke("media:scan-steam"),
     getMediaServerStatus: () => ipcRenderer.invoke("media-server:status"),
     openMediaServerClient: () => ipcRenderer.invoke("media-server:open-client"),
+    loadStreamingData: () => ipcRenderer.invoke("streaming:load"),
     loadSettings: () => ipcRenderer.invoke("settings:load"),
     saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   }),
