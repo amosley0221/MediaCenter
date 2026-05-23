@@ -2702,6 +2702,46 @@ function openMediaCenter(section = "home") {
   openProcessWindow(appWindow, getWindowKey(lastOpenedApp), { defaultFullscreen: true });
 }
 
+function handleRemoteCommand(message = {}) {
+  const command = String(message.command || "").toLowerCase();
+  const payload = message.payload || {};
+
+  if (command === "home") {
+    goHome();
+    return;
+  }
+
+  if (command === "browser") {
+    openBrowser(payload.url || undefined);
+    return;
+  }
+
+  if (command === "settings") {
+    openSettings();
+    return;
+  }
+
+  if (command === "task-switcher" || command === "tasks") {
+    setTaskSwitcherOpen(true, true);
+    return;
+  }
+
+  if (command === "close-active") {
+    closeApp();
+    return;
+  }
+
+  if (command === "media" || command === "mediacenter") {
+    openMediaCenter(payload.section || "home");
+    return;
+  }
+
+  const mediaMatch = command.match(/^media:(home|movies|tv|streaming|music|books|games)$/);
+  if (mediaMatch) {
+    openMediaCenter(mediaMatch[1]);
+  }
+}
+
 function getBrowserUrl(value) {
   const entry = value.trim();
 
@@ -3919,6 +3959,7 @@ function applyStartupState() {
 updateClock();
 renderBrowserTabs();
 setInterval(updateClock, 1000 * 15);
+desktopBridge?.onRemoteCommand?.(handleRemoteCommand);
 applyStartupState();
 loadAppSettings().then(loadStreamingProviderData);
 loadDesktopLibrary();

@@ -34,11 +34,31 @@ function getMediaServer() {
     mediaServer = createMediaServer({
       getLibraryPath,
       getSettingsPath,
+      handleRemoteCommand,
       loadSettings,
     });
   }
 
   return mediaServer;
+}
+
+async function handleRemoteCommand(remoteCommand = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return { ok: false, error: "ToneOS is not open." };
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+  mainWindow.webContents.send("remote:command", {
+    command: remoteCommand.command,
+    payload: remoteCommand.payload || {},
+  });
+
+  return { ok: true };
 }
 
 async function syncMediaServer(settings) {

@@ -14,6 +14,15 @@ contextBridge.exposeInMainWorld(
     openMediaServerClient: () => ipcRenderer.invoke("media-server:open-client"),
     loadStreamingData: () => ipcRenderer.invoke("streaming:load"),
     loadSettings: () => ipcRenderer.invoke("settings:load"),
+    onRemoteCommand: (callback) => {
+      if (typeof callback !== "function") {
+        return () => {};
+      }
+
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on("remote:command", listener);
+      return () => ipcRenderer.removeListener("remote:command", listener);
+    },
     saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   }),
 );

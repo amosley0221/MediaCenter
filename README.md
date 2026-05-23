@@ -28,6 +28,28 @@ Open `Settings > Media Server`, turn on `Enable ToneOS Media Server`, add movies
 
 Same-network access is enabled by default. Add a PIN/password before sharing the client URL with other devices.
 
+The Media Server also exposes a PIN-protected `/api/remote` endpoint for trusted same-network clients such as the ToneOS Android Launcher. Remote commands can open Home, MediaCenter sections, Browser, Settings, Task Manager, or close the active ToneOS window.
+
+## Android Launcher
+
+The `android/` folder contains the first native ToneOS Android Launcher scaffold. Open that folder in Android Studio to build and install it on an Android phone, tablet, or Android TV device.
+
+Current Android launcher features:
+
+- Can be selected as the Android Home app.
+- Shows installed Android apps and launches them.
+- Includes a PC Remote screen for sending commands to ToneOS on the PC.
+- Stores the ToneOS server URL and optional PIN locally on the Android device.
+- Uses the existing ToneOS Media Server URL, such as `http://192.168.1.50:8096`.
+
+To control the PC from Android:
+
+1. In ToneOS on the PC, enable `Settings > Media Server`.
+2. Keep `Only allow same-network devices` on unless you intentionally expose the server another way.
+3. Set a PIN/password.
+4. Copy the LAN URL shown in the Media Server status panel.
+5. Enter that URL and PIN in the Android launcher `PC Remote` screen.
+
 ## Desktop Features Wired
 
 - Electron `webview` browser surface for live sites that block iframe embedding.

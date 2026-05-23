@@ -235,6 +235,7 @@ function createStatusPayload(status, settings) {
   return {
     capabilities: {
       directPlay: settings.mediaServer?.directPlay !== false,
+      remoteControl: true,
       transcoding: false,
       transcodingNote: "FFmpeg transcoding is planned for a later build. This version direct-plays compatible files.",
     },
@@ -652,7 +653,7 @@ function getClientHtml() {
 </html>`;
 }
 
-function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings }) {
+function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, handleRemoteCommand }) {
   let httpServer = null;
   let discoverySocket = null;
   let discoveryTimer = null;
@@ -760,6 +761,37 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings }) {
 
     if (url.pathname === "/api/library") {
       sendJson(response, 200, createLibraryPayload(await loadLibrary(getLibraryPath())));
+      return;
+    }
+
+    if (url.pathname === "/api/remote" && request.method === "POST") {
+      const body = await readRequestBody(request);
+      let payload = {};
+
+      try {
+        payload = JSON.parse(body);
+      } catch {
+        payload = {};
+      }
+
+      const command = String(payload.command || "").trim();
+
+      if (!command) {
+        sendJson(response, 400, { code: "COMMAND_REQUIRED", message: "A remote command is required." });
+        return;
+      }
+
+      if (typeof handleRemoteCommand !== "function") {
+        sendJson(response, 503, { code: "REMOTE_UNAVAILABLE", message: "ToneOS remote control is unavailable." });
+        return;
+      }
+
+      const result = await handleRemoteCommand({
+        command,
+        payload: payload.payload || {},
+      });
+
+      sendJson(response, result?.ok === false ? 400 : 200, result || { ok: true });
       return;
     }
 
