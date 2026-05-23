@@ -1,6 +1,8 @@
 node_modules/
 dist/
+.toneos-android-tools/
 android/.gradle/
 android/**/build/
+android/local.properties
 *.log
 .DS_Store
