@@ -760,9 +760,16 @@ svg {
   padding: 0;
   border: 0;
   background: #000;
+  scrollbar-width: none;
 }
 
 .app-content.browser-app[hidden] {
+  display: none;
+}
+
+.app-content.browser-app::-webkit-scrollbar,
+.browser-frame::-webkit-scrollbar,
+.browser-webview::-webkit-scrollbar {
   display: none;
 }
 
@@ -1234,6 +1241,11 @@ svg {
     radial-gradient(circle at 12% 10%, rgba(202, 177, 255, 0.18), transparent 31%),
     radial-gradient(circle at 88% 10%, rgba(115, 247, 209, 0.14), transparent 32%),
     linear-gradient(135deg, #171631 0%, #272350 48%, #173153 100%);
+  scrollbar-width: none;
+}
+
+.app-content.settings-app::-webkit-scrollbar {
+  display: none;
 }
 
 .settings-grid {

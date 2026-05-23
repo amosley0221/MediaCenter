@@ -2701,6 +2701,7 @@ function isBrowserUrlChromeActive() {
   return (
     browserUrlEdge?.matches(":hover") ||
     browserSearch?.matches(":hover") ||
+    browserTabsList?.matches(":hover") ||
     browserUrlPeek?.contains(document.activeElement)
   );
 }
@@ -3329,6 +3330,12 @@ browserSearch.addEventListener("pointerenter", () => {
 });
 
 browserSearch.addEventListener("pointerleave", scheduleBrowserChromeHide);
+
+browserTabsList.addEventListener("pointerenter", () => {
+  setBrowserChromePeek("url", true);
+});
+
+browserTabsList.addEventListener("pointerleave", scheduleBrowserChromeHide);
 
 browserActionEdge?.addEventListener("pointerenter", () => {
   setBrowserChromePeek("actions", true);
