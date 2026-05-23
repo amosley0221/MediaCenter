@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediaCenter Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="desktop" aria-label="MediaDeck OS prototype">
+      <div class="desktop-glow desktop-glow-left"></div>
+      <div class="desktop-glow desktop-glow-right"></div>
+
+      <header class="top-status" aria-label="System status">
+        <span class="status-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 12.5a10 10 0 0 1 14 0" />
+            <path d="M8 15.5a6 6 0 0 1 8 0" />
+            <path d="M11 18.5a2 2 0 0 1 2 0" />
+          </svg>
+        </span>
+        <span class="status-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
+            <circle cx="12" cy="9" r="2.2" />
+          </svg>
+        </span>
+        <span class="status-icon signal" aria-hidden="true">
+          <i></i>
+          <i></i>
+          <i></i>
+        </span>
+        <time id="clock" datetime="">06:15am</time>
+      </header>
+
+      <section class="launcher" id="launcher" aria-label="App drawer" aria-hidden="true">
+        <div class="launcher-grid" role="list">
+          <button
+            class="launch-tile active"
+            type="button"
+            data-app="media"
+            data-title="MediaCenter"
+            data-section="home"
+            data-description="Movies, TV, music, books, games, podcasts, and personal media in one library."
+            data-detail="A single home theater app for every media shelf."
+          >
+            <span class="tile-icon icon-apps" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="4" width="7" height="7" rx="1.6" />
+                <rect x="13" y="4" width="7" height="7" rx="1.6" />
+                <rect x="4" y="13" width="7" height="7" rx="1.6" />
+                <rect x="13" y="13" width="7" height="7" rx="1.6" />
+              </svg>
+            </span>
+            <span>MediaCenter</span>
+          </button>
+
+          <button
+            class="launch-tile"
+            type="button"
+            data-app="browser"
+            data-title="Browser"
+            data-description="Search live websites from the theater interface."
+            data-detail="Search and browse live web pages."
+          >
+            <span class="tile-icon icon-browser" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8.2" />
+                <path d="M4 12h16" />
+                <path d="M12 3.8c2 2.3 3.1 5 3.1 8.2S14 17.9 12 20.2" />
+                <path d="M12 3.8C10 6.1 8.9 8.8 8.9 12S10 17.9 12 20.2" />
+              </svg>
+            </span>
+            <span>Browser</span>
+          </button>
+        </div>
+        <aside class="settings-rail" aria-label="Settings">
+          <button
+            class="settings-button"
+            id="settingsButton"
+            type="button"
+            aria-label="Open settings"
+            data-title="Settings"
+            data-description="Configure controllers, audio output, display mode, themes, and startup."
+          >
+            <span class="tile-icon icon-settings" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 8.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z" />
+                <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.6A8 8 0 0 0 7 6.6l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5Z" />
+              </svg>
+            </span>
+          </button>
+        </aside>
+      </section>
+
+      <section class="app-window" id="appWindow" aria-label="Open app window" hidden>
+        <div class="window-hotspot" aria-label="Window controls">
+          <div class="window-controls">
+            <button class="window-control control-minimize" type="button" data-action="minimize" aria-label="Minimize">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 12h10" />
+              </svg>
+            </button>
+            <button class="window-control control-fullscreen" type="button" data-action="fullscreen" aria-label="Full screen">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 4H4v4" />
+                <path d="M16 4h4v4" />
+                <path d="M20 16v4h-4" />
+                <path d="M4 16v4h4" />
+              </svg>
+            </button>
+            <button class="window-control control-close" type="button" data-action="close" aria-label="Close">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 7l10 10" />
+                <path d="M17 7 7 17" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="window-dragbar" id="windowDragbar" aria-hidden="true"></div>
+        <div class="resize-handle resize-n" data-resize="n" aria-hidden="true"></div>
+        <div class="resize-handle resize-e" data-resize="e" aria-hidden="true"></div>
+        <div class="resize-handle resize-s" data-resize="s" aria-hidden="true"></div>
+        <div class="resize-handle resize-w" data-resize="w" aria-hidden="true"></div>
+        <div class="resize-handle resize-ne" data-resize="ne" aria-hidden="true"></div>
+        <div class="resize-handle resize-se" data-resize="se" aria-hidden="true"></div>
+        <div class="resize-handle resize-sw" data-resize="sw" aria-hidden="true"></div>
+        <div class="resize-handle resize-nw" data-resize="nw" aria-hidden="true"></div>
+
+        <div class="app-content media-center">
+          <header class="media-header">
+            <div class="media-tools">
+              <form class="media-search" id="mediaSearch" aria-label="Search media">
+                <input
+                  id="mediaSearchInput"
+                  type="search"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-label="Search media"
+                  placeholder="Search media"
+                />
+                <button type="submit" aria-label="Search">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="6.8" />
+                    <path d="m16.2 16.2 4.1 4.1" />
+                  </svg>
+                </button>
+              </form>
+              <button type="button" class="media-source-button" id="addMediaButton" aria-label="Add media">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5v14" />
+                  <path d="M5 12h14" />
+                </svg>
+                <span>Add Media</span>
+              </button>
+            </div>
+            <div class="media-tabs" aria-label="Media sections">
+              <button type="button" class="media-tab active" data-section="home">Home</button>
+              <button type="button" class="media-tab" data-section="movies">Movies</button>
+              <button type="button" class="media-tab" data-section="tv">TV Shows</button>
+              <button type="button" class="media-tab" data-section="streaming">Streaming</button>
+              <button type="button" class="media-tab" data-section="music">Music</button>
+              <button type="button" class="media-tab" data-section="books">Books</button>
+              <button type="button" class="media-tab" data-section="games">Games</button>
+            </div>
+          </header>
+
+          <section class="media-hero" aria-label="Continue watching">
+            <div class="hero-poster poster-movies" aria-hidden="true">
+              <span>MV</span>
+            </div>
+            <div>
+              <p class="hero-label">Continue Watching</p>
+              <h2>Foundation</h2>
+              <p>Season 2, Episode 4. Resume across Plex, Jellyfin, or local files from one theater view.</p>
+              <div class="hero-actions">
+                <button type="button">Play</button>
+                <button type="button">Details</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="media-sections" id="mediaSections" aria-label="Media shelves"></div>
+
+          <section
+            class="source-manager"
+            id="sourceManager"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sourceManagerTitle"
+            hidden
+          >
+            <div class="source-panel">
+              <header class="source-header">
+                <div>
+                  <p class="app-kicker">Library Setup</p>
+                  <h2 id="sourceManagerTitle">Add Media to MediaCenter</h2>
+                </div>
+                <button type="button" class="source-close" id="closeSourceManager" aria-label="Close add media">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 7l10 10" />
+                    <path d="M17 7 7 17" />
+                  </svg>
+                </button>
+              </header>
+
+              <div class="source-actions" aria-label="Media source actions">
+                <button type="button" class="source-action" data-source="local">
+                  <span class="source-icon poster-movies" aria-hidden="true">LF</span>
+                  <strong>Local Media Files</strong>
+                  <span>Movies, TV, music, photos, and mixed media from local files or folders.</span>
+                </button>
+                <button type="button" class="source-action" data-source="watch">
+                  <span class="source-icon poster-tv" aria-hidden="true">WF</span>
+                  <strong>Watch Folder</strong>
+                  <span>Automatically rescan a folder when new files are added.</span>
+                </button>
+                <button type="button" class="source-action" data-source="steam">
+                  <span class="source-icon poster-games" aria-hidden="true">ST</span>
+                  <strong>Scan Steam Library</strong>
+                  <span>Find Steam library folders and import installed games.</span>
+                </button>
+                <button type="button" class="source-action" data-source="games">
+                  <span class="source-icon poster-games" aria-hidden="true">GF</span>
+                  <strong>Add Game Folder</strong>
+                  <span>Import Epic, GOG, emulators, shortcuts, and portable games.</span>
+                </button>
+                <button type="button" class="source-action" data-source="books">
+                  <span class="source-icon poster-books" aria-hidden="true">BK</span>
+                  <strong>Books & Comics</strong>
+                  <span>Add EPUB, PDF, CBR, CBZ, magazines, manuals, or reading folders.</span>
+                </button>
+                <button type="button" class="source-action" data-source="network">
+                  <span class="source-icon poster-streaming" aria-hidden="true">NAS</span>
+                  <strong>Network Share</strong>
+                  <span>Connect NAS or shared folders from another PC.</span>
+                </button>
+              </div>
+
+              <section class="source-list-section" aria-label="Configured sources">
+                <div class="source-list-heading">
+                  <h3>Configured Sources</h3>
+                  <span id="sourceSummary">0 sources</span>
+                </div>
+                <div class="source-list" id="sourceList"></div>
+              </section>
+            </div>
+          </section>
+        </div>
+
+        <div class="app-content browser-app" id="browserApp" hidden>
+          <header class="browser-toolbar">
+            <form class="browser-search" id="browserSearch" aria-label="Web search">
+              <input
+                id="browserAddress"
+                type="search"
+                autocomplete="off"
+                spellcheck="false"
+                value="https://example.com"
+                aria-label="Search or enter website"
+                placeholder="Search or enter website"
+              />
+              <button type="submit" aria-label="Go">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 12h13" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </button>
+            </form>
+            <a
+              class="browser-open"
+              id="browserExternalLink"
+              href="https://example.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open website externally"
+            >
+              <svg viewBox="0 0 24 24">
+                <path d="M14 4h6v6" />
+                <path d="m10 14 10-10" />
+                <path d="M20 15v5H4V4h5" />
+              </svg>
+            </a>
+          </header>
+          <section class="browser-stage" aria-label="Website preview">
+            <iframe
+              class="browser-frame"
+              id="browserFrame"
+              title="Website preview"
+              src="https://example.com"
+              referrerpolicy="no-referrer"
+            ></iframe>
+            <div class="browser-fallback" id="browserFallback" hidden>
+              <div>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 4h6v6" />
+                  <path d="m10 14 10-10" />
+                  <path d="M20 15v5H4V4h5" />
+                </svg>
+                <strong>Open Live Site</strong>
+                <span>This site blocks embedded viewing.</span>
+                <button type="button" id="browserOpenLive">Open</button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="app-content settings-app" id="settingsApp" hidden>
+          <header class="settings-header">
+            <div>
+              <p class="app-kicker">Settings</p>
+              <h1>Settings</h1>
+            </div>
+          </header>
+          <section class="settings-grid" aria-label="System settings">
+            <article class="settings-card">
+              <span class="tile-icon icon-settings" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 7h16" />
+                  <path d="M7 17h10" />
+                  <path d="M9 7v10" />
+                  <path d="M15 7v10" />
+                </svg>
+              </span>
+              <h2>Display</h2>
+              <p>4K theater layout, overscan, fullscreen startup, and taskbar reveal.</p>
+            </article>
+            <article class="settings-card">
+              <span class="tile-icon icon-music" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 15v-4a7 7 0 0 1 14 0v4" />
+                  <path d="M5 15a2 2 0 0 0 2 2h1v-6H7a2 2 0 0 0-2 2v2Z" />
+                  <path d="M19 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2v2Z" />
+                </svg>
+              </span>
+              <h2>Audio</h2>
+              <p>Receiver output, spatial audio, volume steps, and night mode.</p>
+            </article>
+            <article class="settings-card">
+              <span class="tile-icon icon-games" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 15h4" />
+                  <path d="M9 13v4" />
+                  <path d="M15 14.5h.01" />
+                  <path d="M18 16h.01" />
+                  <path d="M6.7 9h10.6a4.4 4.4 0 0 1 4.1 3l.5 2.1a3.6 3.6 0 0 1-6 3.4L14 16H10l-1.9 1.5a3.6 3.6 0 0 1-6-3.4L2.6 12a4.4 4.4 0 0 1 4.1-3Z" />
+                </svg>
+              </span>
+              <h2>Controllers</h2>
+              <p>Gamepad pairing, remote shortcuts, keyboard mapping, and pointer speed.</p>
+            </article>
+          </section>
+        </div>
+      </section>
+
+      <p class="sr-only" id="focusReadout" aria-live="polite">
+        <strong>MediaCenter</strong>
+        <span>Movies, TV, music, books, games, podcasts, and personal media in one library.</span>
+      </p>
+
+      <section
+        class="task-switcher"
+        id="taskSwitcher"
+        aria-label="Open windows"
+        aria-hidden="true"
+        hidden
+      >
+        <div class="task-switcher-header">
+          <span>Open Windows</span>
+        </div>
+        <div class="task-list" id="taskList"></div>
+        <p class="task-empty" id="taskEmpty">No open windows</p>
+      </section>
+
+      <nav class="bottom-dock" aria-label="Task bar">
+        <button
+          type="button"
+          class="dock-button dock-start active"
+          id="drawerButton"
+          aria-label="Open app drawer"
+          aria-controls="launcher"
+          aria-expanded="false"
+        >
+          <span></span>
+        </button>
+        <button type="button" class="dock-button" aria-label="Back">
+          <svg viewBox="0 0 24 24">
+            <path d="M15 18 9 12l6-6" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="dock-button"
+          id="restoreButton"
+          aria-label="Show open windows"
+          aria-controls="taskSwitcher"
+          aria-expanded="false"
+        >
+          <svg viewBox="0 0 24 24">
+            <rect x="7" y="7" width="10" height="10" rx="1.6" />
+          </svg>
+        </button>
+        <button type="button" class="dock-button" id="homeButton" aria-label="Home">
+          <svg viewBox="0 0 24 24">
+            <path d="m4 12 8-7 8 7" />
+            <path d="M7 10.5V19h10v-8.5" />
+          </svg>
+        </button>
+      </nav>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

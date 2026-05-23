@@ -1,0 +1,54 @@
+{
+  "name": "mediacenter",
+  "version": "0.1.0",
+  "description": "A home theater media OS prototype for Windows gaming and media PCs.",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "check": "node --check app.js && node --check electron/main.js && node --check electron/preload.js && node --check electron/steam-scanner.js",
+    "pack:win": "electron-builder --win nsis portable",
+    "pack:mac": "electron-builder --mac dmg"
+  },
+  "keywords": [
+    "media-center",
+    "home-theater",
+    "electron",
+    "games"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest"
+  },
+  "build": {
+    "appId": "com.mediacenter.desktop",
+    "productName": "MediaCenter",
+    "asar": true,
+    "files": [
+      "index.html",
+      "styles.css",
+      "app.js",
+      "assets/**",
+      "electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    }
+  }
+}
