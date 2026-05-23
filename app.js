@@ -49,6 +49,7 @@ const browserSettingsPanel = document.querySelector("#browserSettingsPanel");
 const closeBrowserSettings = document.querySelector("#closeBrowserSettings");
 const browserSettingsForm = document.querySelector("#browserSettingsForm");
 const browserHomeInput = document.querySelector("#browserHomeInput");
+const browserStartupChoices = [...document.querySelectorAll('input[name="browserStartupMode"]')];
 const useCurrentPageButton = document.querySelector("#useCurrentPageButton");
 const browserExternalLink = document.querySelector("#browserExternalLink");
 const browserFallback = document.querySelector("#browserFallback");
@@ -82,7 +83,23 @@ const DEFAULT_FLOATING_WINDOW_HEIGHT = 620;
 const DEFAULT_BROWSER_HOME = "https://example.com";
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
 const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
+const BROWSER_STARTUP_STORAGE_KEY = "mediacenter.browser.startup.v1";
+const BROWSER_TABS_STORAGE_KEY = "mediacenter.browser.tabs.v1";
 const APP_SETTINGS_STORAGE_KEY = "mediacenter.settings.v1";
+const BROWSER_SCROLLBAR_CSS = `
+html,
+body {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+`;
 const REAL_LIBRARY_SOURCE = "desktop-library";
 const BLOCKED_EMBED_HOSTS = [
   "amazon.com",
@@ -822,16 +839,11 @@ let mediaSources = getInitialMediaSources();
 let desktopLibrary = null;
 let appSettings = mergeAppSettings();
 let browserHomeUrl = loadBrowserHome();
+let browserStartupMode = loadBrowserStartupMode();
 let browserAddressSelectMode = "ready";
 let browserTabCounter = 1;
 let activeBrowserTabId = "tab-1";
-let browserTabs = [
-  {
-    id: activeBrowserTabId,
-    title: "Home",
-    url: browserHomeUrl || DEFAULT_BROWSER_HOME,
-  },
-];
+let browserTabs = getInitialBrowserTabs();
 let browserIsTerminating = false;
 
 function canUseDesktopBridge() {
@@ -1167,6 +1179,100 @@ function saveBrowserHome(value) {
   }
 
   return homeUrl;
+}
+
+function loadBrowserStartupMode() {
+  try {
+    const savedMode = localStorage.getItem(BROWSER_STARTUP_STORAGE_KEY);
+    return savedMode === "previous" ? "previous" : "home";
+  } catch {
+    return "home";
+  }
+}
+
+function saveBrowserStartupMode(value) {
+  browserStartupMode = value === "previous" ? "previous" : "home";
+
+  try {
+    localStorage.setItem(BROWSER_STARTUP_STORAGE_KEY, browserStartupMode);
+  } catch {
+    // Browser startup mode can still work for this session.
+  }
+
+  return browserStartupMode;
+}
+
+function createHomeBrowserTabs() {
+  activeBrowserTabId = "tab-1";
+  browserTabCounter = 1;
+
+  return [
+    {
+      id: activeBrowserTabId,
+      title: "Home",
+      url: getBrowserHome(),
+    },
+  ];
+}
+
+function normalizeBrowserTab(tab, index) {
+  const url = getBrowserUrl(tab?.url || getBrowserHome());
+
+  return {
+    id: typeof tab?.id === "string" && tab.id ? tab.id : `tab-${index + 1}`,
+    title: typeof tab?.title === "string" && tab.title ? tab.title : getBrowserHost(url) || "Tab",
+    url,
+  };
+}
+
+function loadSavedBrowserTabs() {
+  try {
+    const savedState = JSON.parse(localStorage.getItem(BROWSER_TABS_STORAGE_KEY) || "{}");
+    const savedTabs = Array.isArray(savedState.tabs)
+      ? savedState.tabs.map(normalizeBrowserTab).filter((tab) => tab.url)
+      : [];
+
+    if (!savedTabs.length) {
+      return null;
+    }
+
+    const savedIds = new Set(savedTabs.map((tab) => tab.id));
+    activeBrowserTabId = savedIds.has(savedState.activeTabId) ? savedState.activeTabId : savedTabs[0].id;
+    browserTabCounter = savedTabs.reduce((highest, tab) => {
+      const tabNumber = Number(tab.id.replace(/^tab-/, ""));
+      return Number.isFinite(tabNumber) ? Math.max(highest, tabNumber) : highest;
+    }, savedTabs.length);
+
+    return savedTabs;
+  } catch {
+    return null;
+  }
+}
+
+function getInitialBrowserTabs() {
+  if (browserStartupMode === "previous") {
+    return loadSavedBrowserTabs() || createHomeBrowserTabs();
+  }
+
+  return createHomeBrowserTabs();
+}
+
+function saveBrowserTabs() {
+  try {
+    localStorage.setItem(
+      BROWSER_TABS_STORAGE_KEY,
+      JSON.stringify({
+        activeTabId: activeBrowserTabId,
+        tabs: browserTabs.map((tab) => ({
+          id: tab.id,
+          title: tab.title,
+          url: tab.url,
+        })),
+      }),
+    );
+  } catch {
+    // Browser tabs still work for this session if storage is unavailable.
+  }
 }
 
 function getDemoMediaSources() {
@@ -1810,6 +1916,7 @@ function hideAppWindow() {
 
 function terminateBrowserProcess() {
   browserIsTerminating = true;
+  saveBrowserTabs();
   window.clearTimeout(browserFallbackTimer);
   setBrowserSettingsOpen(false);
   setBrowserFallbackVisible(false);
@@ -1828,7 +1935,7 @@ function terminateBrowserProcess() {
 
   browserAddress.value = getBrowserHome();
   browserExternalLink.href = getBrowserHome();
-  browserTabs = [createBrowserTab(getBrowserHome(), "Home")];
+  browserTabs = createHomeBrowserTabs();
   activeBrowserTabId = browserTabs[0].id;
   renderBrowserTabs();
   browserIsTerminating = false;
@@ -2594,6 +2701,7 @@ function updateActiveBrowserTab(patch = {}) {
   }
 
   Object.assign(activeTab, patch);
+  saveBrowserTabs();
   renderBrowserTabs();
 }
 
@@ -2638,6 +2746,7 @@ function renderBrowserTabs() {
     const nextTab = createBrowserTab(getBrowserHome(), "New Tab");
     browserTabs.push(nextTab);
     activeBrowserTabId = nextTab.id;
+    saveBrowserTabs();
     renderBrowserTabs();
     navigateBrowser(nextTab.url, { updateTab: true });
   });
@@ -2652,6 +2761,7 @@ function switchBrowserTab(tabId) {
   }
 
   activeBrowserTabId = tab.id;
+  saveBrowserTabs();
   renderBrowserTabs();
   navigateBrowser(tab.url, { updateTab: false });
 }
@@ -2671,6 +2781,7 @@ function closeBrowserTab(tabId) {
     navigateBrowser(nextTab.url, { updateTab: false });
   }
 
+  saveBrowserTabs();
   renderBrowserTabs();
 }
 
@@ -2682,6 +2793,9 @@ function setBrowserSettingsOpen(isOpen) {
 
   if (isOpen) {
     browserHomeInput.value = getBrowserHome();
+    browserStartupChoices.forEach((choice) => {
+      choice.checked = choice.value === browserStartupMode;
+    });
     browserHomeInput.focus({ preventScroll: true });
     browserHomeInput.select();
   }
@@ -2795,6 +2909,18 @@ function shouldUseElectronBrowser() {
   return canUseDesktopBridge() && Boolean(browserWebview);
 }
 
+async function hideBrowserWebviewScrollbars() {
+  if (!shouldUseElectronBrowser() || !browserWebview || browserWebview.hidden) {
+    return;
+  }
+
+  try {
+    await browserWebview.insertCSS(BROWSER_SCROLLBAR_CSS);
+  } catch {
+    // Sites can still load if scrollbar styling cannot be injected.
+  }
+}
+
 function setActiveBrowserSurface(url, shouldFallback) {
   if (shouldUseElectronBrowser()) {
     browserFrame.hidden = true;
@@ -2826,6 +2952,7 @@ function navigateBrowser(value, { createTab = false, updateTab = true } = {}) {
     const nextTab = createBrowserTab(url, getBrowserHost(url) || "New Tab");
     browserTabs.push(nextTab);
     activeBrowserTabId = nextTab.id;
+    saveBrowserTabs();
   } else if (updateTab) {
     updateActiveBrowserTab({ title: getBrowserHost(url) || "New Tab", url });
   }
@@ -2839,9 +2966,25 @@ function navigateBrowser(value, { createTab = false, updateTab = true } = {}) {
   setActiveBrowserSurface(url, shouldFallback);
 }
 
-function openBrowser(target = browserAddress.value || getBrowserHome(), { preserveState = false } = {}) {
+function loadBrowserStartupTabs() {
+  browserTabs = browserStartupMode === "previous" ? loadSavedBrowserTabs() || createHomeBrowserTabs() : createHomeBrowserTabs();
+  activeBrowserTabId = getActiveBrowserTab()?.id || browserTabs[0]?.id || "tab-1";
+  renderBrowserTabs();
+}
+
+function openBrowser(target = null, { preserveState = false } = {}) {
+  const wasClosed = browserWindow.hidden && !openWindowRecords.some((record) => record.key === "browser");
+
   showAppView("browser");
-  navigateBrowser(target, { createTab: !preserveState });
+
+  if (!target && wasClosed && !preserveState) {
+    loadBrowserStartupTabs();
+    navigateBrowser(getActiveBrowserTab()?.url || getBrowserHome(), { updateTab: false });
+  } else {
+    const nextTarget = target || getActiveBrowserTab()?.url || getBrowserHome();
+    navigateBrowser(nextTarget, { createTab: Boolean(target) && !preserveState, updateTab: !preserveState });
+  }
+
   registerOpenWindow(lastOpenedApp);
   openProcessWindow(browserWindow, "browser", { defaultFullscreen: true });
 }
@@ -3310,6 +3453,8 @@ browserSettingsPanel.addEventListener("click", (event) => {
 browserSettingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveBrowserHome(browserHomeInput.value);
+  const formData = new FormData(browserSettingsForm);
+  saveBrowserStartupMode(formData.get("browserStartupMode"));
   setBrowserSettingsOpen(false);
 });
 
@@ -3431,6 +3576,10 @@ browserFrame.addEventListener("load", () => {
   }
 });
 
+browserWebview.addEventListener("dom-ready", () => {
+  hideBrowserWebviewScrollbars();
+});
+
 browserWebview.addEventListener("did-navigate", (event) => {
   if (browserIsTerminating) {
     return;
@@ -3439,6 +3588,7 @@ browserWebview.addEventListener("did-navigate", (event) => {
   browserAddress.value = event.url;
   browserExternalLink.href = event.url;
   updateActiveBrowserTab({ url: event.url, title: getBrowserHost(event.url) || "Browser" });
+  hideBrowserWebviewScrollbars();
 });
 
 browserWebview.addEventListener("did-navigate-in-page", (event) => {
@@ -3449,6 +3599,7 @@ browserWebview.addEventListener("did-navigate-in-page", (event) => {
   browserAddress.value = event.url;
   browserExternalLink.href = event.url;
   updateActiveBrowserTab({ url: event.url, title: getBrowserHost(event.url) || "Browser" });
+  hideBrowserWebviewScrollbars();
 });
 
 browserWebview.addEventListener("page-title-updated", (event) => {

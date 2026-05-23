@@ -1113,6 +1113,46 @@ svg {
   text-transform: uppercase;
 }
 
+.browser-startup-options {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.browser-startup-options legend {
+  margin-bottom: 2px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.browser-startup-options label {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(6, 8, 24, 0.5);
+  color: rgba(255, 255, 255, 0.88);
+  text-transform: none;
+}
+
+.browser-settings-form .browser-startup-options input {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  accent-color: #9ae64f;
+}
+
 .browser-home-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

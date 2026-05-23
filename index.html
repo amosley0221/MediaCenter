@@ -416,7 +416,18 @@
                   />
                   <button type="button" id="useCurrentPageButton">Use Current</button>
                 </div>
-                <button type="submit">Save Home Page</button>
+                <fieldset class="browser-startup-options">
+                  <legend>Open browser to</legend>
+                  <label>
+                    <input type="radio" name="browserStartupMode" value="home" />
+                    <span>Home page</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="browserStartupMode" value="previous" />
+                    <span>Previous tabs</span>
+                  </label>
+                </fieldset>
+                <button type="submit">Save Browser Settings</button>
               </form>
             </div>
           </section>
@@ -461,7 +472,6 @@
           <header class="settings-header">
             <div>
               <p class="app-kicker">Settings</p>
-              <h1>Settings</h1>
             </div>
           </header>
           <section class="settings-grid" aria-label="System settings">
