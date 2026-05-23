@@ -414,15 +414,20 @@ async function twitchRequest(pathname, params, settings) {
 }
 
 function mapTwitchStream(stream) {
+  const streamerName = cleanText(stream.user_name || stream.user_login || "Twitch");
+  const streamTitle = compactText(stream.title, "Live stream");
+  const category = cleanText(stream.game_name || "Twitch");
+
   return {
     brand: "twitch",
     coverUrl: String(stream.thumbnail_url || "")
       .replace("{width}", "440")
       .replace("{height}", "248"),
-    meta: `${stream.game_name || "Twitch"} | ${formatViewers(stream.viewer_count)}`,
+    creator: streamerName,
+    meta: `${streamTitle} | ${category} | ${formatViewers(stream.viewer_count)}`,
     status: "Live",
     target: `https://www.twitch.tv/${stream.user_login}`,
-    title: compactText(stream.title, stream.user_name || stream.user_login),
+    title: streamerName,
   };
 }
 
