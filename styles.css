@@ -774,11 +774,11 @@ svg {
   display: grid;
   width: min(720px, calc(100% - 360px));
   min-width: min(520px, calc(100% - 360px));
-  height: 106px;
+  height: 6px;
   align-items: start;
-  padding-top: 16px;
+  overflow: visible;
   transform: translateX(-50%);
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .browser-action-peek {
@@ -787,10 +787,28 @@ svg {
   right: clamp(22px, 3vw, 42px);
   display: flex;
   gap: 10px;
-  height: 106px;
+  width: 158px;
+  height: 6px;
   align-items: start;
-  padding-top: 16px;
+  justify-content: end;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.browser-edge-trigger {
+  position: absolute;
+  top: 0;
+  z-index: 4;
+  height: 6px;
   pointer-events: auto;
+}
+
+.browser-url-edge {
+  inset-inline: 0;
+}
+
+.browser-action-edge {
+  inset-inline: 0;
 }
 
 .settings-header h1 {
@@ -800,6 +818,11 @@ svg {
 }
 
 .browser-search {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 46px;
   min-height: 48px;
@@ -820,7 +843,6 @@ svg {
   backdrop-filter: blur(22px);
 }
 
-.browser-url-peek:hover .browser-search,
 .browser-url-peek:focus-within .browser-search,
 .browser-app.show-browser-url .browser-search {
   opacity: 1;
@@ -878,6 +900,9 @@ svg {
 
 .browser-open,
 .browser-tool-button {
+  position: relative;
+  z-index: 2;
+  top: 16px;
   width: 46px;
   height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.32);
@@ -902,8 +927,6 @@ svg {
   padding: 0;
 }
 
-.browser-action-peek:hover .browser-open,
-.browser-action-peek:hover .browser-tool-button,
 .browser-action-peek:focus-within .browser-open,
 .browser-action-peek:focus-within .browser-tool-button,
 .browser-app.show-browser-actions .browser-open,
@@ -3230,24 +3253,24 @@ svg {
     left: 14px;
     width: calc(100% - 28px);
     min-width: 0;
-    height: 86px;
-    padding-top: 10px;
+    height: 6px;
     transform: none;
   }
 
   .browser-action-peek {
-    top: 52px;
+    top: 0;
     right: 14px;
-    height: 76px;
-    padding-top: 0;
+    height: 6px;
   }
 
   .browser-search {
+    top: 10px;
     min-height: 46px;
   }
 
   .browser-open,
   .browser-tool-button {
+    top: 10px;
     width: 46px;
     height: 46px;
   }

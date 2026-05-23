@@ -35,6 +35,8 @@ const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
 const browserUrlPeek = document.querySelector(".browser-url-peek");
 const browserActionPeek = document.querySelector(".browser-action-peek");
+const browserUrlEdge = document.querySelector(".browser-url-edge");
+const browserActionEdge = document.querySelector(".browser-action-edge");
 const browserHomeButton = document.querySelector("#browserHomeButton");
 const browserFrame = document.querySelector("#browserFrame");
 const browserWebview = document.querySelector("#browserWebview");
@@ -65,6 +67,8 @@ const desktopBridge = window.mediaCenterDesktop || null;
 const MIN_WINDOW_WIDTH = 520;
 const MIN_WINDOW_HEIGHT = 360;
 const WINDOW_MARGIN = 8;
+const BROWSER_EDGE_REVEAL_PX = 6;
+const BROWSER_CHROME_HIDE_DELAY_MS = 140;
 const DEFAULT_BROWSER_HOME = "https://example.com";
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
 const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
@@ -793,6 +797,7 @@ let activeLauncherIndex = 0;
 let lastOpenedApp = null;
 let activeWindowInteraction = null;
 let browserFallbackTimer = null;
+let browserChromeHideTimer = null;
 let activeTvSeriesTitle = "Foundation";
 let activeTvSeasonIndex = 1;
 let currentMediaSection = "home";
@@ -2399,6 +2404,37 @@ function setBrowserChromePeek(area, isVisible) {
   }
 }
 
+function isBrowserUrlChromeActive() {
+  return (
+    browserUrlEdge?.matches(":hover") ||
+    browserSearch?.matches(":hover") ||
+    browserUrlPeek?.contains(document.activeElement)
+  );
+}
+
+function isBrowserActionChromeActive() {
+  const actionControls = [browserActionEdge, browserHomeButton, browserSettingsButton, browserExternalLink];
+
+  return (
+    actionControls.some((control) => control?.matches(":hover")) ||
+    browserActionPeek?.contains(document.activeElement) ||
+    !browserSettingsPanel.hidden
+  );
+}
+
+function scheduleBrowserChromeHide() {
+  window.clearTimeout(browserChromeHideTimer);
+  browserChromeHideTimer = window.setTimeout(() => {
+    if (!isBrowserUrlChromeActive()) {
+      setBrowserChromePeek("url", false);
+    }
+
+    if (!isBrowserActionChromeActive()) {
+      setBrowserChromePeek("actions", false);
+    }
+  }, BROWSER_CHROME_HIDE_DELAY_MS);
+}
+
 function updateBrowserChromePeek(event) {
   if (appWindow.hidden || browserApp.hidden) {
     setBrowserChromePeek("url", false);
@@ -2408,19 +2444,25 @@ function updateBrowserChromePeek(event) {
 
   const urlBounds = browserUrlPeek.getBoundingClientRect();
   const actionBounds = browserActionPeek.getBoundingClientRect();
+  const atTopEdge = event.clientY <= BROWSER_EDGE_REVEAL_PX;
   const inUrlPeek =
+    atTopEdge &&
     event.clientX >= urlBounds.left &&
     event.clientX <= urlBounds.right &&
-    event.clientY >= urlBounds.top &&
-    event.clientY <= urlBounds.bottom;
+    event.clientY >= urlBounds.top;
   const inActionPeek =
+    atTopEdge &&
     event.clientX >= actionBounds.left &&
     event.clientX <= actionBounds.right &&
-    event.clientY >= actionBounds.top &&
-    event.clientY <= actionBounds.bottom;
+    event.clientY >= actionBounds.top;
 
-  setBrowserChromePeek("url", inUrlPeek || browserUrlPeek.contains(document.activeElement));
-  setBrowserChromePeek("actions", inActionPeek || browserActionPeek.contains(document.activeElement));
+  if (inUrlPeek) {
+    setBrowserChromePeek("url", true);
+  }
+
+  if (inActionPeek) {
+    setBrowserChromePeek("actions", true);
+  }
 }
 
 function getBrowserAddressCaretIndex(clientX) {
@@ -2936,20 +2978,30 @@ useCurrentPageButton.addEventListener("click", () => {
   browserHomeInput.select();
 });
 
-browserUrlPeek.addEventListener("pointerenter", () => {
+browserUrlEdge?.addEventListener("pointerenter", () => {
   setBrowserChromePeek("url", true);
 });
 
-browserUrlPeek.addEventListener("pointerleave", () => {
-  setBrowserChromePeek("url", browserUrlPeek.contains(document.activeElement));
+browserUrlEdge?.addEventListener("pointerleave", scheduleBrowserChromeHide);
+
+browserSearch.addEventListener("pointerenter", () => {
+  setBrowserChromePeek("url", true);
 });
 
-browserActionPeek.addEventListener("pointerenter", () => {
+browserSearch.addEventListener("pointerleave", scheduleBrowserChromeHide);
+
+browserActionEdge?.addEventListener("pointerenter", () => {
   setBrowserChromePeek("actions", true);
 });
 
-browserActionPeek.addEventListener("pointerleave", () => {
-  setBrowserChromePeek("actions", browserActionPeek.contains(document.activeElement));
+browserActionEdge?.addEventListener("pointerleave", scheduleBrowserChromeHide);
+
+[browserHomeButton, browserSettingsButton, browserExternalLink].forEach((control) => {
+  control.addEventListener("pointerenter", () => {
+    setBrowserChromePeek("actions", true);
+  });
+
+  control.addEventListener("pointerleave", scheduleBrowserChromeHide);
 });
 
 browserAddress.addEventListener("pointerdown", (event) => {
