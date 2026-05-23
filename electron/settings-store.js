@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
   },
   display: {
     fullscreenStartup: true,
+    launchMediaCenter: false,
     overscan: 0,
     taskbarReveal: true,
   },

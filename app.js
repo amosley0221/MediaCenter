@@ -114,6 +114,7 @@ const DEFAULT_APP_SETTINGS = {
   },
   display: {
     fullscreenStartup: true,
+    launchMediaCenter: false,
     overscan: 0,
     taskbarReveal: true,
   },
@@ -926,6 +927,10 @@ async function loadAppSettings() {
   applyAppSettings(loadedSettings);
   populateSettingsForm(appSettings);
   setSettingsStatus("Settings loaded.");
+
+  if (appSettings.display.launchMediaCenter && !new URLSearchParams(window.location.search).get("app") && appWindow.hidden) {
+    openMediaCenter("home");
+  }
 }
 
 async function saveAppSettings(settings) {

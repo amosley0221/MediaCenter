@@ -33,6 +33,7 @@ MEDIA_CENTER_WINDOWED=1 npm start
 - Source choices persist in local storage for this prototype.
 - The desktop media library is saved in Electron app data as `media-library.json`.
 - Settings are real persisted controls in Electron app data as `settings.json`.
+- Display settings can optionally open MediaCenter automatically after ToneOS starts.
 - ToneOS theme settings control the OS color system and wallpaper variants.
 - Wallpaper options include the default gradient, default gradient with ToneOS branding, black/gold, and black/gold with ToneOS branding.
 - Optional metadata providers can enrich scanned libraries:
