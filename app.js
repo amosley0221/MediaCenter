@@ -714,6 +714,11 @@ function showAppView(viewName) {
   Object.entries(appViews).forEach(([name, view]) => {
     view.hidden = name !== viewName;
   });
+
+  if (viewName !== "browser") {
+    browserApp.classList.remove("show-browser-url", "show-browser-actions");
+    setBrowserSettingsOpen(false);
+  }
 }
 
 function getInitials(text) {

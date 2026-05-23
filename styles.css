@@ -440,6 +440,10 @@ svg {
   pointer-events: none;
 }
 
+.app-window.is-fullscreen .window-hotspot {
+  pointer-events: auto;
+}
+
 .app-content {
   position: relative;
   display: grid;
@@ -483,6 +487,10 @@ svg {
   padding: 0;
   border: 0;
   background: #000;
+}
+
+.app-content.browser-app[hidden] {
+  display: none;
 }
 
 .app-content.browser-app > .browser-toolbar {
@@ -1969,11 +1977,22 @@ svg {
 
 .desktop.app-fullscreen .bottom-dock {
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transform: translateX(-50%) translateY(calc(100% + 28px));
 }
 
-.desktop.app-fullscreen.taskbar-peek .bottom-dock {
+.desktop.app-fullscreen .bottom-dock::before {
+  position: absolute;
+  right: -45vw;
+  bottom: 100%;
+  left: -45vw;
+  height: 34px;
+  content: "";
+}
+
+.desktop.app-fullscreen.taskbar-peek .bottom-dock,
+.desktop.app-fullscreen .bottom-dock:hover,
+.desktop.app-fullscreen .bottom-dock:focus-within {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(-50%) translateY(0);
