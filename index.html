@@ -250,6 +250,12 @@
 
         <div class="app-content browser-app" id="browserApp" hidden>
           <header class="browser-toolbar">
+            <button type="button" class="browser-tool-button" id="browserHomeButton" aria-label="Go to browser home page">
+              <svg viewBox="0 0 24 24">
+                <path d="m4 12 8-7 8 7" />
+                <path d="M7 10.5V19h10v-8.5" />
+              </svg>
+            </button>
             <form class="browser-search" id="browserSearch" aria-label="Web search">
               <input
                 id="browserAddress"
@@ -267,6 +273,12 @@
                 </svg>
               </button>
             </form>
+            <button type="button" class="browser-tool-button" id="browserSettingsButton" aria-label="Browser settings">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 8.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z" />
+                <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.6A8 8 0 0 0 7 6.6l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5Z" />
+              </svg>
+            </button>
             <a
               class="browser-open"
               id="browserExternalLink"
@@ -309,6 +321,40 @@
                 <span>This site blocks embedded viewing.</span>
                 <button type="button" id="browserOpenLive">Open</button>
               </div>
+            </div>
+          </section>
+          <section
+            class="browser-settings-panel"
+            id="browserSettingsPanel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="browserSettingsTitle"
+            hidden
+          >
+            <div class="browser-settings-card">
+              <header>
+                <h2 id="browserSettingsTitle">Browser Settings</h2>
+                <button type="button" class="browser-settings-close" id="closeBrowserSettings" aria-label="Close browser settings">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 7l10 10" />
+                    <path d="M17 7 7 17" />
+                  </svg>
+                </button>
+              </header>
+              <form class="browser-settings-form" id="browserSettingsForm">
+                <label for="browserHomeInput">Home page</label>
+                <div class="browser-home-row">
+                  <input
+                    id="browserHomeInput"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="https://example.com"
+                  />
+                  <button type="button" id="useCurrentPageButton">Use Current</button>
+                </div>
+                <button type="submit">Save Home Page</button>
+              </form>
             </div>
           </section>
         </div>

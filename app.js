@@ -31,8 +31,15 @@ const mediaSections = document.querySelector("#mediaSections");
 const mediaTabs = [...document.querySelectorAll(".media-tab")];
 const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
+const browserHomeButton = document.querySelector("#browserHomeButton");
 const browserFrame = document.querySelector("#browserFrame");
 const browserWebview = document.querySelector("#browserWebview");
+const browserSettingsButton = document.querySelector("#browserSettingsButton");
+const browserSettingsPanel = document.querySelector("#browserSettingsPanel");
+const closeBrowserSettings = document.querySelector("#closeBrowserSettings");
+const browserSettingsForm = document.querySelector("#browserSettingsForm");
+const browserHomeInput = document.querySelector("#browserHomeInput");
+const useCurrentPageButton = document.querySelector("#useCurrentPageButton");
 const browserExternalLink = document.querySelector("#browserExternalLink");
 const browserFallback = document.querySelector("#browserFallback");
 const browserOpenLive = document.querySelector("#browserOpenLive");
@@ -44,8 +51,9 @@ const desktopBridge = window.mediaCenterDesktop || null;
 const MIN_WINDOW_WIDTH = 520;
 const MIN_WINDOW_HEIGHT = 360;
 const WINDOW_MARGIN = 8;
-const BROWSER_HOME = "https://example.com";
+const DEFAULT_BROWSER_HOME = "https://example.com";
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
+const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
 const BLOCKED_EMBED_HOSTS = [
   "amazon.com",
   "disneyplus.com",
@@ -592,9 +600,36 @@ let activeWindowKey = null;
 let taskSwitcherPinned = false;
 let taskSwitcherCloseTimer = null;
 let mediaSources = getInitialMediaSources();
+let browserHomeUrl = loadBrowserHome();
+let browserAddressSelectMode = "ready";
 
 function canUseDesktopBridge() {
   return Boolean(desktopBridge?.isElectron);
+}
+
+function loadBrowserHome() {
+  try {
+    return localStorage.getItem(BROWSER_HOME_STORAGE_KEY) || DEFAULT_BROWSER_HOME;
+  } catch {
+    return DEFAULT_BROWSER_HOME;
+  }
+}
+
+function getBrowserHome() {
+  return browserHomeUrl || DEFAULT_BROWSER_HOME;
+}
+
+function saveBrowserHome(value) {
+  const homeUrl = getBrowserUrl(value || DEFAULT_BROWSER_HOME);
+  browserHomeUrl = homeUrl;
+
+  try {
+    localStorage.setItem(BROWSER_HOME_STORAGE_KEY, homeUrl);
+  } catch {
+    // Browser home can still work for this session if storage is unavailable.
+  }
+
+  return homeUrl;
 }
 
 function getDemoMediaSources() {
@@ -737,7 +772,7 @@ function createTaskPreview(record, meta) {
 
     preview.classList.add("task-preview-browser");
     address.className = "task-preview-address";
-    address.textContent = record.target || BROWSER_HOME;
+    address.textContent = record.target || getBrowserHome();
     frame.className = "task-preview-frame";
     glow.className = "task-preview-glow";
     frame.append(glow);
@@ -880,7 +915,7 @@ function registerOpenWindow(record) {
 
 function openWindowRecord(record) {
   if (record.type === "browser") {
-    openBrowser(record.target || BROWSER_HOME);
+    openBrowser(record.target || getBrowserHome());
     return;
   }
 
@@ -1404,7 +1439,7 @@ function getBrowserUrl(value) {
   const entry = value.trim();
 
   if (!entry) {
-    return BROWSER_HOME;
+    return getBrowserHome();
   }
 
   if (/^https?:\/\//i.test(entry)) {
@@ -1442,6 +1477,58 @@ function setBrowserFallbackVisible(isVisible) {
   browserFallback.hidden = !isVisible;
 }
 
+function getBrowserCurrentUrl() {
+  if (shouldUseElectronBrowser() && browserWebview.src) {
+    return browserWebview.src;
+  }
+
+  return browserExternalLink.href || getBrowserHome();
+}
+
+function setBrowserSettingsOpen(isOpen) {
+  browserSettingsPanel.hidden = !isOpen;
+  browserSettingsPanel.classList.toggle("is-open", isOpen);
+  browserSettingsButton.classList.toggle("active", isOpen);
+
+  if (isOpen) {
+    browserHomeInput.value = getBrowserHome();
+    browserHomeInput.focus({ preventScroll: true });
+    browserHomeInput.select();
+  }
+}
+
+function getBrowserAddressCaretIndex(clientX) {
+  const styles = window.getComputedStyle(browserAddress);
+  const canvas = getBrowserAddressCaretIndex.canvas || document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+  const clickX = clientX - browserAddress.getBoundingClientRect().left - paddingLeft + browserAddress.scrollLeft;
+  const value = browserAddress.value;
+  let closestIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  getBrowserAddressCaretIndex.canvas = canvas;
+  context.font = styles.font;
+
+  for (let index = 0; index <= value.length; index += 1) {
+    const width = context.measureText(value.slice(0, index)).width;
+    const distance = Math.abs(width - clickX);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  }
+
+  return closestIndex;
+}
+
+function placeBrowserAddressCaret(clientX) {
+  const caretIndex = getBrowserAddressCaretIndex(clientX);
+  browserAddress.focus({ preventScroll: true });
+  browserAddress.setSelectionRange(caretIndex, caretIndex);
+}
+
 function shouldUseElectronBrowser() {
   return canUseDesktopBridge() && Boolean(browserWebview);
 }
@@ -1463,7 +1550,7 @@ function setActiveBrowserSurface(url, shouldFallback) {
 }
 
 function navigateBrowser(value) {
-  const entry = value.trim() || BROWSER_HOME;
+  const entry = value.trim() || getBrowserHome();
   const url = getBrowserUrl(entry);
   const shouldFallback = isKnownBlockedEmbed(url);
 
@@ -1480,7 +1567,7 @@ function navigateBrowser(value) {
   setActiveBrowserSurface(url, shouldFallback);
 }
 
-function openBrowser(target = browserAddress.value || BROWSER_HOME) {
+function openBrowser(target = browserAddress.value || getBrowserHome()) {
   showAppView("browser");
   navigateBrowser(target);
   registerOpenWindow(lastOpenedApp);
@@ -1778,12 +1865,73 @@ browserSearch.addEventListener("submit", (event) => {
   navigateBrowser(browserAddress.value);
 });
 
+browserHomeButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  navigateBrowser(getBrowserHome());
+});
+
+browserSettingsButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  setBrowserSettingsOpen(browserSettingsPanel.hidden);
+});
+
+closeBrowserSettings.addEventListener("click", () => {
+  setBrowserSettingsOpen(false);
+});
+
+browserSettingsPanel.addEventListener("click", (event) => {
+  if (event.target === browserSettingsPanel) {
+    setBrowserSettingsOpen(false);
+  }
+});
+
+browserSettingsForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveBrowserHome(browserHomeInput.value);
+  setBrowserSettingsOpen(false);
+});
+
+useCurrentPageButton.addEventListener("click", () => {
+  browserHomeInput.value = getBrowserCurrentUrl();
+  browserHomeInput.focus({ preventScroll: true });
+  browserHomeInput.select();
+});
+
+browserAddress.addEventListener("pointerdown", (event) => {
+  if (document.activeElement !== browserAddress || browserAddressSelectMode === "ready") {
+    event.preventDefault();
+    browserAddress.focus({ preventScroll: true });
+    browserAddress.select();
+    browserAddressSelectMode = "selected";
+  } else {
+    event.preventDefault();
+    browserAddressSelectMode = "caret";
+    placeBrowserAddressCaret(event.clientX);
+  }
+});
+
+browserAddress.addEventListener("focus", () => {
+  if (browserAddressSelectMode === "ready") {
+    browserAddress.select();
+    browserAddressSelectMode = "selected";
+  }
+});
+
+browserAddress.addEventListener("blur", () => {
+  browserAddressSelectMode = "ready";
+});
+
+browserAddress.addEventListener("input", () => {
+  browserAddressSelectMode = "caret";
+});
+
 browserAddress.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") {
     return;
   }
 
   event.preventDefault();
+  browserAddressSelectMode = "ready";
   navigateBrowser(browserAddress.value);
 });
 
@@ -1925,6 +2073,11 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (!browserSettingsPanel.hidden) {
+      setBrowserSettingsOpen(false);
+      return;
+    }
+
     if (!sourceManager.hidden) {
       setSourceManagerOpen(false);
       return;
