@@ -205,6 +205,9 @@ const DEFAULT_APP_SETTINGS = {
     name: "ToneOS Living Room",
     pin: "",
     port: 8096,
+    remoteFallbackMbps: 80,
+    remoteOriginal: true,
+    sameNetworkOriginal: true,
     sameNetworkOnly: true,
   },
 };
@@ -1153,10 +1156,16 @@ function renderMediaServerStatus(status = null) {
     return;
   }
 
+  const quality = status.capabilities?.quality || {};
+  const qualityText = [
+    quality.sameNetwork === "original" ? "LAN original" : "LAN adaptive",
+    quality.remote === "original" ? "Remote original" : `Remote ${quality.remoteFallbackMbps || 80} Mbps fallback`,
+  ].join(" | ");
+
   mediaServerState.textContent = status.discovery?.enabled ? "Running with discovery" : "Running";
-  mediaServerUrls.textContent = status.urls?.length
+  mediaServerUrls.textContent = `${status.urls?.length
     ? status.urls.join("  ")
-    : `http://127.0.0.1:${status.port || appSettings.mediaServer.port}/`;
+    : `http://127.0.0.1:${status.port || appSettings.mediaServer.port}/`}  ${qualityText}`;
 }
 
 async function refreshMediaServerStatusView() {

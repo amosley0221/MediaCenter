@@ -30,6 +30,11 @@ function clampPort(port) {
   return Number.isInteger(parsedPort) && parsedPort >= 1024 && parsedPort <= 65535 ? parsedPort : 8096;
 }
 
+function clampMbps(value) {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) && parsedValue >= 2 && parsedValue <= 1000 ? Math.round(parsedValue) : 80;
+}
+
 function getLanAddresses() {
   return Object.values(os.networkInterfaces())
     .flat()
@@ -232,10 +237,16 @@ function getAccessError(request, url, settings) {
 function createStatusPayload(status, settings) {
   const port = clampPort(settings.mediaServer?.port);
   const urls = status.running ? getClientUrls(port) : [];
+  const mediaServerSettings = settings.mediaServer || {};
 
   return {
     capabilities: {
-      directPlay: settings.mediaServer?.directPlay !== false,
+      directPlay: mediaServerSettings.directPlay !== false,
+      quality: {
+        remote: mediaServerSettings.remoteOriginal === false ? "adaptive" : "original",
+        remoteFallbackMbps: clampMbps(mediaServerSettings.remoteFallbackMbps),
+        sameNetwork: mediaServerSettings.sameNetworkOriginal === false ? "adaptive" : "original",
+      },
       remoteControl: true,
       transcoding: false,
       transcodingNote: "FFmpeg transcoding is planned for a later build. This version direct-plays compatible files.",
@@ -247,11 +258,11 @@ function createStatusPayload(status, settings) {
     },
     enabled: Boolean(settings.mediaServer?.enabled),
     error: status.error || "",
-    name: settings.mediaServer?.name || "ToneOS Media Server",
-    pinRequired: Boolean(String(settings.mediaServer?.pin || "").trim()),
+    name: mediaServerSettings.name || "ToneOS Media Server",
+    pinRequired: Boolean(String(mediaServerSettings.pin || "").trim()),
     port,
     running: Boolean(status.running),
-    sameNetworkOnly: settings.mediaServer?.sameNetworkOnly !== false,
+    sameNetworkOnly: mediaServerSettings.sameNetworkOnly !== false,
     urls,
   };
 }
@@ -617,8 +628,9 @@ function getClientHtml() {
       async function load() {
         try {
           const status = await api("/api/status");
+          const qualityMode = status.capabilities?.quality?.sameNetwork === "original" ? "Original quality" : "Adaptive";
           serverName.textContent = status.name;
-          serverStatus.textContent = status.running ? "Direct play ready on this network" : "Server is not running";
+          serverStatus.textContent = status.running ? qualityMode + " direct play ready on this network" : "Server is not running";
           pinPanel.hidden = true;
           state.library = await api("/api/library");
           render();
@@ -824,10 +836,30 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, hand
     const streamMatch = url.pathname.match(/^\/stream\/([^/]+)$/);
 
     if (streamMatch) {
-      if (settings.mediaServer?.directPlay === false) {
+      const mediaServerSettings = settings.mediaServer || {};
+      const remoteAddress = request.socket.remoteAddress || "";
+      const isSameNetworkRequest = isSameNetworkAddress(remoteAddress);
+
+      if (mediaServerSettings.directPlay === false) {
         sendJson(response, 409, {
           code: "DIRECT_PLAY_DISABLED",
           message: "Direct play is disabled. FFmpeg transcoding is planned for a later build.",
+        });
+        return;
+      }
+
+      if (isSameNetworkRequest && mediaServerSettings.sameNetworkOriginal === false) {
+        sendJson(response, 409, {
+          code: "ORIGINAL_QUALITY_DISABLED",
+          message: "Original quality is disabled for same-network devices. FFmpeg adaptive streaming is planned for a later build.",
+        });
+        return;
+      }
+
+      if (!isSameNetworkRequest && mediaServerSettings.remoteOriginal === false) {
+        sendJson(response, 409, {
+          code: "REMOTE_ORIGINAL_DISABLED",
+          message: `Remote original quality is disabled. FFmpeg fallback at ${clampMbps(mediaServerSettings.remoteFallbackMbps)} Mbps is planned for a later build.`,
         });
         return;
       }

@@ -830,7 +830,7 @@
             <section class="settings-section" data-settings-panel="server" hidden>
               <header>
                 <h2>Media Server</h2>
-                <span>Same-network streaming</span>
+                <span>Original quality streaming</span>
               </header>
               <label class="setting-toggle">
                 <input type="checkbox" name="mediaServer.enabled" />
@@ -848,6 +848,14 @@
                 <input type="checkbox" name="mediaServer.directPlay" />
                 <span>Direct play compatible video files</span>
               </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="mediaServer.sameNetworkOriginal" />
+                <span>Original quality on this network</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="mediaServer.remoteOriginal" />
+                <span>Original quality away from home</span>
+              </label>
               <label class="setting-field">
                 <span>Server name</span>
                 <input type="text" name="mediaServer.name" autocomplete="off" spellcheck="false" />
@@ -859,6 +867,10 @@
               <label class="setting-field">
                 <span>PIN / password</span>
                 <input type="password" name="mediaServer.pin" autocomplete="new-password" spellcheck="false" />
+              </label>
+              <label class="setting-field">
+                <span>Remote fallback Mbps</span>
+                <input type="number" name="mediaServer.remoteFallbackMbps" min="2" max="1000" step="1" />
               </label>
               <div class="setting-toggle setting-disabled" aria-disabled="true">
                 <input type="checkbox" disabled />

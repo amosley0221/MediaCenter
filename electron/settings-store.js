@@ -64,6 +64,9 @@ const DEFAULT_SETTINGS = {
     name: "ToneOS Living Room",
     pin: "",
     port: 8096,
+    remoteFallbackMbps: 80,
+    remoteOriginal: true,
+    sameNetworkOriginal: true,
     sameNetworkOnly: true,
   },
 };
