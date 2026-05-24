@@ -1,6 +1,7 @@
 const path = require("node:path");
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { loadLibrary, upsertScannedSource, upsertSteamScan } = require("./media-library");
+const { loadLiveTvData } = require("./live-tv");
 const { createMediaServer } = require("./media-server");
 const { loadSettings, loadSettingsSync, saveSettings } = require("./settings-store");
 const { scanSteamLibraries } = require("./steam-scanner");
@@ -202,6 +203,12 @@ ipcMain.handle("media:open-item", async (_event, item = {}) => {
 ipcMain.handle("streaming:load", async () => {
   const settings = await loadSettings(getSettingsPath());
   return loadStreamingData(settings.streamingProviders);
+});
+
+ipcMain.handle("livetv:load", async () => {
+  const settings = await loadSettings(getSettingsPath());
+  const library = await loadLibrary(getLibraryPath());
+  return loadLiveTvData(settings, library);
 });
 
 ipcMain.handle("settings:load", async () => {

@@ -170,6 +170,7 @@
               <button type="button" class="media-tab" data-section="movies">Movies</button>
               <button type="button" class="media-tab" data-section="tv">TV Shows</button>
               <button type="button" class="media-tab" data-section="streaming">Streaming</button>
+              <button type="button" class="media-tab" data-section="live">Live TV</button>
               <button type="button" class="media-tab" data-section="music">Music</button>
               <button type="button" class="media-tab" data-section="books">Books</button>
               <button type="button" class="media-tab" data-section="games">Games</button>
@@ -256,6 +257,11 @@
                   <strong>Network Share</strong>
                   <span>Connect NAS or shared folders from another PC.</span>
                 </button>
+                <button type="button" class="source-action" data-source="live">
+                  <span class="source-icon poster-live" aria-hidden="true">TV</span>
+                  <strong>Live TV Source</strong>
+                  <span>Add HDHomeRun, M3U playlist, XMLTV guide, or custom local channels.</span>
+                </button>
               </div>
 
               <section class="source-list-section" aria-label="Configured sources">
@@ -265,6 +271,32 @@
                 </div>
                 <div class="source-list" id="sourceList"></div>
               </section>
+            </div>
+          </section>
+
+          <section
+            class="live-player"
+            id="livePlayer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="livePlayerTitle"
+            hidden
+          >
+            <div class="live-player-card">
+              <header>
+                <div>
+                  <p class="app-kicker">Live TV</p>
+                  <h2 id="livePlayerTitle">Now Playing</h2>
+                  <span id="livePlayerMeta">Direct play</span>
+                </div>
+                <button type="button" class="live-player-close" id="closeLivePlayer" aria-label="Close live player">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 7l10 10" />
+                    <path d="M17 7 7 17" />
+                  </svg>
+                </button>
+              </header>
+              <video id="livePlayerVideo" controls autoplay playsinline></video>
             </div>
           </section>
         </div>
@@ -541,6 +573,19 @@
                 </svg>
               </span>
               <h2>Media Server</h2>
+            </button>
+            <button type="button" class="settings-card" data-settings-section="live">
+              <span class="tile-icon icon-tv" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="6" width="16" height="12" rx="2" />
+                  <path d="M9 21h6" />
+                  <path d="M12 18v3" />
+                  <path d="M8 10h3" />
+                  <path d="M14 10h2" />
+                  <path d="M8 14h8" />
+                </svg>
+              </span>
+              <h2>Live TV</h2>
             </button>
           </section>
 
@@ -837,6 +882,65 @@
                     <button type="button" id="openMediaServerClient">Open client</button>
                   </div>
                 </div>
+              </div>
+            </section>
+
+            <section class="settings-section" data-settings-panel="live" hidden>
+              <header>
+                <h2>Live TV</h2>
+                <span>Tuners, guides, and custom channels</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="liveTv.enabled" />
+                <span>Enable Live TV in MediaCenter</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="liveTv.youtubeTvEnabled" />
+                <span>Show YouTube TV portal</span>
+              </label>
+              <label class="setting-field">
+                <span>YouTube TV URL</span>
+                <input type="text" name="liveTv.youtubeTvUrl" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="liveTv.hdHomeRunEnabled" />
+                <span>Load HDHomeRun channels</span>
+              </label>
+              <label class="setting-field">
+                <span>HDHomeRun URL or IP</span>
+                <input type="text" name="liveTv.hdHomeRunUrl" autocomplete="off" spellcheck="false" placeholder="http://192.168.1.50" />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="liveTv.m3uEnabled" />
+                <span>Load M3U playlist</span>
+              </label>
+              <label class="setting-field">
+                <span>M3U URL or file path</span>
+                <input type="text" name="liveTv.m3uSource" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="liveTv.xmltvEnabled" />
+                <span>Use XMLTV guide data</span>
+              </label>
+              <label class="setting-field">
+                <span>XMLTV URL or file path</span>
+                <input type="text" name="liveTv.xmltvSource" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="liveTv.customChannelsEnabled" />
+                <span>Build custom channels from local video files</span>
+              </label>
+              <label class="setting-field setting-field-wide">
+                <span>Custom channels</span>
+                <textarea
+                  name="liveTv.customChannels"
+                  spellcheck="false"
+                  placeholder="Music Videos | movies,tv | music video | 15&#10;The Office | tv | The Office | 30"
+                ></textarea>
+              </label>
+              <div class="settings-note">
+                <strong>Custom channel format</strong>
+                <span>Name | sections | search words | minutes per slot</span>
               </div>
             </section>
 

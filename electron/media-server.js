@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
+const { loadLiveTvData } = require("./live-tv");
 const { loadLibrary } = require("./media-library");
 
 const DISCOVERY_HOST = "239.255.79.101";
@@ -761,6 +762,12 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, hand
 
     if (url.pathname === "/api/library") {
       sendJson(response, 200, createLibraryPayload(await loadLibrary(getLibraryPath())));
+      return;
+    }
+
+    if (url.pathname === "/api/live-tv") {
+      const library = await loadLibrary(getLibraryPath());
+      sendJson(response, 200, await loadLiveTvData(settings, library));
       return;
     }
 

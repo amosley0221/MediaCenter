@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld(
     scanSteamLibrary: () => ipcRenderer.invoke("media:scan-steam"),
     getMediaServerStatus: () => ipcRenderer.invoke("media-server:status"),
     openMediaServerClient: () => ipcRenderer.invoke("media-server:open-client"),
+    loadLiveTvData: () => ipcRenderer.invoke("livetv:load"),
     loadStreamingData: () => ipcRenderer.invoke("streaming:load"),
     loadSettings: () => ipcRenderer.invoke("settings:load"),
     onRemoteCommand: (callback) => {

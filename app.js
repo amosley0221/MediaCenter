@@ -34,6 +34,11 @@ const mediaHero = document.querySelector(".media-hero");
 const mediaSections = document.querySelector("#mediaSections");
 const mediaTabs = [...document.querySelectorAll(".media-tab")];
 const mediaHeroPrimaryButton = mediaHero.querySelector(".hero-actions button:first-child");
+const livePlayer = document.querySelector("#livePlayer");
+const livePlayerVideo = document.querySelector("#livePlayerVideo");
+const livePlayerTitle = document.querySelector("#livePlayerTitle");
+const livePlayerMeta = document.querySelector("#livePlayerMeta");
+const closeLivePlayer = document.querySelector("#closeLivePlayer");
 const browserSearch = document.querySelector("#browserSearch");
 const browserAddress = document.querySelector("#browserAddress");
 const browserTabsList = document.querySelector("#browserTabs");
@@ -89,6 +94,7 @@ const BROWSER_STARTUP_STORAGE_KEY = "mediacenter.browser.startup.v1";
 const BROWSER_TABS_STORAGE_KEY = "mediacenter.browser.tabs.v1";
 const APP_SETTINGS_STORAGE_KEY = "mediacenter.settings.v1";
 const STREAMING_PROVIDER_SOURCE = "streaming-provider";
+const LIVE_TV_SOURCE = "live-tv";
 const BROWSER_SCROLLBAR_CSS = `
 html,
 body {
@@ -178,6 +184,19 @@ const DEFAULT_APP_SETTINGS = {
     youtubeChannels: "",
     youtubeEnabled: false,
     youtubeSearches: "",
+  },
+  liveTv: {
+    customChannels: "",
+    customChannelsEnabled: false,
+    enabled: false,
+    hdHomeRunEnabled: false,
+    hdHomeRunUrl: "",
+    m3uEnabled: false,
+    m3uSource: "",
+    xmltvEnabled: false,
+    xmltvSource: "",
+    youtubeTvEnabled: true,
+    youtubeTvUrl: "https://tv.youtube.com/",
   },
   mediaServer: {
     directPlay: true,
@@ -423,6 +442,56 @@ const mediaCatalog = {
       },
     ],
   },
+  live: {
+    section: "live",
+    title: "Live TV",
+    searchPlaceholder: "Search channels, shows, or custom stations",
+    hero: {
+      label: "Live Guide",
+      title: "Live TV",
+      text: "Watch currently playing channels from YouTube TV, HDHomeRun, M3U playlists, XMLTV guides, or custom local channels.",
+      action: "Open Guide",
+      posterSection: "live",
+      target: "https://tv.youtube.com/",
+    },
+    shelves: [
+      {
+        source: "live-tv",
+        title: "Live TV Sources",
+        items: [
+          {
+            title: "YouTube TV",
+            meta: "Signed-in live guide and DVR portal",
+            brand: "youtube-tv",
+            section: "live",
+            status: "Open",
+            target: "https://tv.youtube.com/",
+          },
+          {
+            title: "HDHomeRun",
+            meta: "Local network tuner channels",
+            brand: "live-tv",
+            section: "live",
+            status: "Setup",
+          },
+          {
+            title: "M3U Playlist",
+            meta: "Import IPTV or local stream playlist",
+            brand: "live-tv",
+            section: "live",
+            status: "Setup",
+          },
+          {
+            title: "Custom Channels",
+            meta: "Create always-on channels from your local files",
+            brand: "live-tv",
+            section: "live",
+            status: "Setup",
+          },
+        ],
+      },
+    ],
+  },
   music: {
     section: "music",
     title: "Music",
@@ -635,7 +704,7 @@ const mediaHome = {
         {
           title: "YouTube TV",
           meta: "Live TV portal",
-          section: "streaming",
+          section: "live",
           brand: "youtube-tv",
           status: "Sign in",
           target: "https://tv.youtube.com/",
@@ -702,6 +771,13 @@ const sourcePresets = {
     status: "Ready",
     title: "Local Media Files",
   },
+  live: {
+    detail: "HDHomeRun tuners, M3U playlists, XMLTV guide data, and custom channels",
+    iconClass: "poster-live",
+    path: "Settings > Live TV",
+    status: "Setup",
+    title: "Live TV Source",
+  },
   movies: {
     detail: "Movie files served locally and over the ToneOS Media Server",
     iconClass: "poster-movies",
@@ -757,6 +833,7 @@ let taskSwitcherCloseTimer = null;
 let mediaSources = getInitialMediaSources();
 let desktopLibrary = null;
 let streamingProviderData = null;
+let liveTvData = null;
 let appSettings = mergeAppSettings();
 let browserHomeUrl = loadBrowserHome();
 let browserStartupMode = loadBrowserStartupMode();
@@ -795,6 +872,10 @@ function mergeAppSettings(settings = {}) {
     streamingProviders: {
       ...DEFAULT_APP_SETTINGS.streamingProviders,
       ...(settings.streamingProviders || {}),
+    },
+    liveTv: {
+      ...DEFAULT_APP_SETTINGS.liveTv,
+      ...(settings.liveTv || {}),
     },
     mediaServer: {
       ...DEFAULT_APP_SETTINGS.mediaServer,
@@ -981,6 +1062,7 @@ function applyAppSettings(settings) {
   desktop.classList.toggle("disable-taskbar-reveal", !appSettings.display.taskbarReveal);
   desktop.classList.toggle("night-mode", appSettings.audio.nightMode);
   desktop.classList.toggle("show-button-hints", appSettings.controllers.buttonHints);
+  mediaCatalog.live.hero.target = appSettings.liveTv.youtubeTvUrl || "https://tv.youtube.com/";
   saveLocalAppSettings(appSettings);
 }
 
@@ -1022,6 +1104,7 @@ async function saveAppSettings(settings, statusText = "Settings saved.") {
   setSettingsStatus(statusText);
   refreshMediaServerStatusView();
   loadStreamingProviderData();
+  loadLiveTvData();
 }
 
 function renderMediaServerStatus(status = null) {
@@ -1429,6 +1512,8 @@ function applyDesktopLibrary(library) {
   if (!appViews.media.hidden) {
     renderMediaCenter(currentMediaSection);
   }
+
+  loadLiveTvData();
 }
 
 function removeStreamingProviderShelves(config) {
@@ -1572,6 +1657,99 @@ async function loadStreamingProviderData() {
     applyStreamingProviderData({
       homeItems: [],
       messages: [`Streaming refresh failed: ${error.message || "Unable to load providers."}`],
+      shelves: [],
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
+function removeLiveTvShelves(config) {
+  config.shelves = config.shelves.filter((shelf) => shelf.source !== LIVE_TV_SOURCE);
+}
+
+function normalizeLiveTvItem(item) {
+  return {
+    ...item,
+    meta: item.meta || "Live TV",
+    section: "live",
+  };
+}
+
+function normalizeLiveTvShelf(shelf) {
+  const items = (shelf.items || []).map(normalizeLiveTvItem).filter((item) => item.title);
+
+  if (!items.length) {
+    return null;
+  }
+
+  return {
+    ...shelf,
+    items,
+    source: LIVE_TV_SOURCE,
+  };
+}
+
+function createLiveTvStatusShelf(messages = []) {
+  if (!messages.length) {
+    return null;
+  }
+
+  return {
+    source: LIVE_TV_SOURCE,
+    title: "Live TV Status",
+    items: messages.slice(0, 6).map((message) => ({
+      brand: "live-tv",
+      meta: message,
+      section: "live",
+      status: "Check",
+      title: "Live TV setup",
+    })),
+  };
+}
+
+function applyLiveTvData(data) {
+  liveTvData = data || { homeItems: [], messages: [], shelves: [] };
+  removeLiveTvShelves(mediaHome);
+  removeLiveTvShelves(mediaCatalog.live);
+
+  const liveShelves = (liveTvData.shelves || [])
+    .map(normalizeLiveTvShelf)
+    .filter(Boolean);
+  const statusShelf = createLiveTvStatusShelf(liveTvData.messages || []);
+  const homeItems = (liveTvData.homeItems || []).map(normalizeLiveTvItem);
+
+  if (statusShelf) {
+    liveShelves.push(statusShelf);
+  }
+
+  if (liveShelves.length) {
+    mediaCatalog.live.shelves.unshift(...liveShelves);
+  }
+
+  if (homeItems.length) {
+    mediaHome.shelves.unshift({
+      source: LIVE_TV_SOURCE,
+      title: "Live TV Now",
+      items: homeItems.slice(0, 12),
+    });
+  }
+
+  if (!appViews.media.hidden && ["home", "live"].includes(currentMediaSection)) {
+    renderMediaCenter(currentMediaSection);
+  }
+}
+
+async function loadLiveTvData() {
+  if (!canUseDesktopBridge() || typeof desktopBridge.loadLiveTvData !== "function") {
+    return;
+  }
+
+  try {
+    applyLiveTvData(await desktopBridge.loadLiveTvData());
+  } catch (error) {
+    applyLiveTvData({
+      homeItems: [],
+      messages: [`Live TV refresh failed: ${error.message || "Unable to load live TV."}`],
       shelves: [],
       updatedAt: new Date().toISOString(),
     });
@@ -1977,6 +2155,10 @@ function hideProcessWindow(processWindow) {
     browserApp.classList.remove("show-browser-url", "show-browser-actions");
   }
 
+  if (processWindow === appWindow) {
+    closeLiveTvPlayer();
+  }
+
   resetWindowGeometry(processWindow);
 
   updateFullscreenShell();
@@ -2326,6 +2508,13 @@ async function addMediaSource(sourceKey) {
     return;
   }
 
+  if (sourceKey === "live") {
+    setSourceManagerOpen(false);
+    openSettings();
+    setSettingsSection("live");
+    return;
+  }
+
   setSourceActionBusy(sourceKey, true);
 
   try {
@@ -2461,7 +2650,84 @@ async function openDesktopMediaItem(item) {
   return Boolean(result?.ok);
 }
 
+function closeLiveTvPlayer() {
+  if (!livePlayer || !livePlayerVideo) {
+    return;
+  }
+
+  livePlayerVideo.pause();
+  livePlayerVideo.removeAttribute("src");
+  livePlayerVideo.load();
+  livePlayer.hidden = true;
+}
+
+function openLiveTvPlayer(item, src) {
+  if (!livePlayer || !livePlayerVideo || !src) {
+    return;
+  }
+
+  livePlayerTitle.textContent = item.title || item.channelName || "Live TV";
+  livePlayerMeta.textContent = item.meta || item.channelName || "Direct play";
+  livePlayerVideo.src = src;
+  livePlayer.hidden = false;
+  livePlayerVideo.play().catch(() => {});
+}
+
+async function getLocalLiveStreamUrl(item) {
+  const localItem = item.localItem || {};
+
+  if (!localItem.id || !canUseDesktopBridge() || typeof desktopBridge.getMediaServerStatus !== "function") {
+    return "";
+  }
+
+  const status = await desktopBridge.getMediaServerStatus();
+  const baseUrl = status?.running ? status.urls?.[0] : "";
+
+  if (!baseUrl) {
+    return "";
+  }
+
+  const pin = String(appSettings.mediaServer?.pin || "").trim();
+  const pinQuery = pin ? `?pin=${encodeURIComponent(pin)}` : "";
+
+  return `${baseUrl.replace(/\/+$/, "")}/stream/${encodeURIComponent(localItem.id)}${pinQuery}`;
+}
+
+async function openLiveTvItem(item) {
+  if (item.target) {
+    openBrowser(item.target);
+    return;
+  }
+
+  if (item.streamUrl) {
+    openLiveTvPlayer(item, item.streamUrl);
+    return;
+  }
+
+  let localStreamUrl = "";
+
+  try {
+    localStreamUrl = await getLocalLiveStreamUrl(item);
+  } catch {
+    localStreamUrl = "";
+  }
+
+  if (localStreamUrl) {
+    openLiveTvPlayer(item, localStreamUrl);
+    return;
+  }
+
+  if (item.localItem?.path) {
+    openDesktopMediaItem({ path: item.localItem.path, title: item.title });
+  }
+}
+
 function openMediaItem(item, section) {
+  if (section === "live" || item.section === "live" || item.source === LIVE_TV_SOURCE) {
+    openLiveTvItem(item);
+    return;
+  }
+
   const streamingTarget = getStreamingItemTarget(item);
 
   if (streamingTarget) {
@@ -2519,7 +2785,7 @@ function createMediaCard(item, section, index) {
     article.append(badge);
   }
 
-  if (getStreamingItemTarget(item) || item.launchUrl || item.path) {
+  if (getStreamingItemTarget(item) || item.streamUrl || item.localItem || item.launchUrl || item.path) {
     article.addEventListener("click", () => openMediaItem(item, section));
   } else if (item.seasons) {
     article.addEventListener("click", () => {
@@ -2736,7 +3002,7 @@ function handleRemoteCommand(message = {}) {
     return;
   }
 
-  const mediaMatch = command.match(/^media:(home|movies|tv|streaming|music|books|games)$/);
+  const mediaMatch = command.match(/^media:(home|movies|tv|streaming|live|music|books|games)$/);
   if (mediaMatch) {
     openMediaCenter(mediaMatch[1]);
   }
@@ -3409,6 +3675,10 @@ settingsCards.forEach((card) => {
     if (card.dataset.settingsSection === "server") {
       refreshMediaServerStatusView();
     }
+
+    if (card.dataset.settingsSection === "live") {
+      loadLiveTvData();
+    }
   });
 });
 
@@ -3538,7 +3808,7 @@ refreshStreamingProviders?.addEventListener("click", () => {
 });
 
 mediaHeroPrimaryButton.addEventListener("click", () => {
-  if (currentMediaSection === "streaming" && mediaHeroPrimaryButton.dataset.target) {
+  if ((currentMediaSection === "streaming" || currentMediaSection === "live") && mediaHeroPrimaryButton.dataset.target) {
     openBrowser(mediaHeroPrimaryButton.dataset.target);
   }
 });
@@ -3667,6 +3937,14 @@ addMediaButton.addEventListener("click", () => {
 
 closeSourceManager.addEventListener("click", () => {
   setSourceManagerOpen(false);
+});
+
+closeLivePlayer?.addEventListener("click", closeLiveTvPlayer);
+
+livePlayer?.addEventListener("click", (event) => {
+  if (event.target === livePlayer) {
+    closeLiveTvPlayer();
+  }
 });
 
 sourceManager.addEventListener("click", (event) => {
@@ -3961,5 +4239,8 @@ renderBrowserTabs();
 setInterval(updateClock, 1000 * 15);
 desktopBridge?.onRemoteCommand?.(handleRemoteCommand);
 applyStartupState();
-loadAppSettings().then(loadStreamingProviderData);
+loadAppSettings().then(() => {
+  loadStreamingProviderData();
+  loadLiveTvData();
+});
 loadDesktopLibrary();

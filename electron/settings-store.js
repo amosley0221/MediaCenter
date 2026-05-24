@@ -44,6 +44,19 @@ const DEFAULT_SETTINGS = {
     youtubeEnabled: false,
     youtubeSearches: "",
   },
+  liveTv: {
+    customChannels: "",
+    customChannelsEnabled: false,
+    enabled: false,
+    hdHomeRunEnabled: false,
+    hdHomeRunUrl: "",
+    m3uEnabled: false,
+    m3uSource: "",
+    xmltvEnabled: false,
+    xmltvSource: "",
+    youtubeTvEnabled: true,
+    youtubeTvUrl: "https://tv.youtube.com/",
+  },
   mediaServer: {
     directPlay: true,
     discovery: true,
@@ -80,6 +93,10 @@ function mergeSettings(settings = {}) {
     streamingProviders: {
       ...DEFAULT_SETTINGS.streamingProviders,
       ...(settings.streamingProviders || {}),
+    },
+    liveTv: {
+      ...DEFAULT_SETTINGS.liveTv,
+      ...(settings.liveTv || {}),
     },
     mediaServer: {
       ...DEFAULT_SETTINGS.mediaServer,
