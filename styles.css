@@ -2068,6 +2068,12 @@ svg {
     linear-gradient(135deg, #ffb23f, #eb537b 53%, #44276e);
 }
 
+.poster-emulators {
+  background:
+    linear-gradient(var(--cover-shift, 135deg), rgba(255, 255, 255, 0.17), transparent 36%),
+    linear-gradient(135deg, #ffd76a, #ff6b52 42%, #8c5cff 72%, #1b1b50);
+}
+
 .poster-settings {
   background:
     linear-gradient(var(--cover-shift, 135deg), rgba(255, 255, 255, 0.16), transparent 36%),

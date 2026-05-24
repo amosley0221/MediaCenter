@@ -637,6 +637,16 @@ const mediaCatalog = {
         ],
       },
       {
+        title: "Emulators & Retro",
+        items: [
+          { title: "Super Mario World", meta: "Super Nintendo | ROM" },
+          { title: "The Legend of Zelda", meta: "NES | ROM" },
+          { title: "Mario Kart 64", meta: "Nintendo 64 | ROM" },
+          { title: "Sonic the Hedgehog 2", meta: "Sega Genesis | ROM" },
+          { title: "Metroid Prime", meta: "GameCube | ROM" },
+        ],
+      },
+      {
         title: "Cloud & Remote Play",
         items: [
           { title: "GeForce NOW", meta: "Cloud library" },
@@ -756,6 +766,13 @@ const sourcePresets = {
     path: "D:\\Media\\Books",
     status: "Ready",
     title: "Books & Comics",
+  },
+  emulators: {
+    detail: "ROMs and disc images for RetroArch, Dolphin, PCSX2, RPCS3, and other emulators",
+    iconClass: "poster-emulators",
+    path: "D:\\Emulation\\ROMs",
+    status: "Ready",
+    title: "Emulator ROMs",
   },
   games: {
     detail: "Epic, GOG, emulators, shortcuts, portable games",
@@ -1465,11 +1482,13 @@ function buildRealBookShelves() {
 function buildRealGameShelves() {
   const games = getSectionItems("games").map((item) => cloneLibraryItem(item, "games"));
   const steamGames = games.filter((item) => item.source === "steam");
-  const localGames = games.filter((item) => item.source !== "steam");
+  const emulatorGames = games.filter((item) => item.source === "emulator" || item.sourceId?.startsWith("emulators:"));
+  const localGames = games.filter((item) => item.source !== "steam" && item.source !== "emulator" && !item.sourceId?.startsWith("emulators:"));
 
   return [
     createRealShelf("Installed Games", sortNewestFirst(games).slice(0, 18)),
     createRealShelf("Steam Library", steamGames.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
+    createRealShelf("Emulators & ROMs", emulatorGames.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
     createRealShelf("Local Game Folder", localGames.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 24)),
   ].filter(Boolean);
 }
@@ -2261,6 +2280,10 @@ function getSourceDetail(sourceKey, sourcePath) {
     return "Game shortcuts and install folders from this location";
   }
 
+  if (sourceKey === "emulators") {
+    return "ROMs and emulator disc images from this location";
+  }
+
   if (sourceKey === "network") {
     return "NAS or shared folder connected from this path";
   }
@@ -2478,7 +2501,7 @@ async function addFolderSource(sourceKey) {
     }
   }
 
-  if (sourceKey === "games") {
+  if (sourceKey === "games" || sourceKey === "emulators") {
     renderMediaCenter("games");
     lastOpenedApp = { type: "media", section: "games" };
     registerOpenWindow(lastOpenedApp);

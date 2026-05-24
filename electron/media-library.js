@@ -39,6 +39,37 @@ const BOOK_EXTENSIONS = new Set([
 ]);
 
 const GAME_EXTENSIONS = new Set([".app", ".bat", ".cmd", ".desktop", ".exe", ".lnk", ".sh", ".url"]);
+const ROM_EXTENSIONS = new Set([
+  ".3ds",
+  ".7z",
+  ".a26",
+  ".a52",
+  ".a78",
+  ".bin",
+  ".cdi",
+  ".cue",
+  ".fds",
+  ".gb",
+  ".gba",
+  ".gbc",
+  ".gcm",
+  ".gen",
+  ".gg",
+  ".iso",
+  ".md",
+  ".nds",
+  ".nes",
+  ".n64",
+  ".pbp",
+  ".sfc",
+  ".sms",
+  ".smc",
+  ".wad",
+  ".wbfs",
+  ".xci",
+  ".z64",
+  ".zip",
+]);
 const IGNORED_DIRECTORIES = new Set([
   "$recycle.bin",
   ".cache",
@@ -417,8 +448,80 @@ function parseMusicTrack(filePath) {
   };
 }
 
+function inferEmulatorPlatform(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  const folderText = path
+    .dirname(filePath)
+    .split(path.sep)
+    .slice(-3)
+    .join(" ")
+    .toLowerCase();
+  const extensionPlatforms = {
+    ".3ds": "Nintendo 3DS",
+    ".a26": "Atari 2600",
+    ".a52": "Atari 5200",
+    ".a78": "Atari 7800",
+    ".cdi": "Dreamcast",
+    ".fds": "Famicom Disk System",
+    ".gb": "Game Boy",
+    ".gba": "Game Boy Advance",
+    ".gbc": "Game Boy Color",
+    ".gcm": "GameCube",
+    ".gen": "Sega Genesis",
+    ".gg": "Game Gear",
+    ".md": "Sega Genesis",
+    ".nds": "Nintendo DS",
+    ".nes": "NES",
+    ".n64": "Nintendo 64",
+    ".pbp": "PlayStation Portable",
+    ".sfc": "Super Nintendo",
+    ".sms": "Sega Master System",
+    ".smc": "Super Nintendo",
+    ".wad": "Wii",
+    ".wbfs": "Wii",
+    ".xci": "Nintendo Switch",
+    ".z64": "Nintendo 64",
+  };
+  const folderPlatforms = [
+    ["switch", "Nintendo Switch"],
+    ["gamecube", "GameCube"],
+    ["game cube", "GameCube"],
+    ["dreamcast", "Dreamcast"],
+    ["playstation portable", "PlayStation Portable"],
+    ["psp", "PlayStation Portable"],
+    ["playstation 2", "PlayStation 2"],
+    ["ps2", "PlayStation 2"],
+    ["playstation", "PlayStation"],
+    ["ps1", "PlayStation"],
+    ["nintendo 64", "Nintendo 64"],
+    ["n64", "Nintendo 64"],
+    ["super nintendo", "Super Nintendo"],
+    ["snes", "Super Nintendo"],
+    ["game boy advance", "Game Boy Advance"],
+    ["gba", "Game Boy Advance"],
+    ["game boy color", "Game Boy Color"],
+    ["gbc", "Game Boy Color"],
+    ["game boy", "Game Boy"],
+    ["gb", "Game Boy"],
+    ["nintendo ds", "Nintendo DS"],
+    ["nds", "Nintendo DS"],
+    ["nintendo 3ds", "Nintendo 3DS"],
+    ["3ds", "Nintendo 3DS"],
+    ["genesis", "Sega Genesis"],
+    ["mega drive", "Sega Genesis"],
+    ["nes", "NES"],
+    ["wii", "Wii"],
+  ];
+
+  return folderPlatforms.find(([needle]) => folderText.includes(needle))?.[1] || extensionPlatforms[extension] || "Emulator";
+}
+
 function getFileKind(filePath, sourceKey) {
   const extension = path.extname(filePath).toLowerCase();
+
+  if (sourceKey === "emulators" && ROM_EXTENSIONS.has(extension)) {
+    return "games";
+  }
 
   if (sourceKey === "games" && GAME_EXTENSIONS.has(extension)) {
     return "games";
@@ -481,7 +584,7 @@ function createScannedItem(filePath, sourceKey, sourceId, stats) {
     id: `${sourceId}:${filePath}`,
     path: filePath,
     section,
-    source: "desktop-scan",
+    source: sourceKey === "emulators" ? "emulator" : "desktop-scan",
     sourceId,
     updatedAt,
   };
@@ -516,6 +619,18 @@ function createScannedItem(filePath, sourceKey, sourceId, stats) {
   }
 
   if (section === "games") {
+    if (sourceKey === "emulators") {
+      const platform = inferEmulatorPlatform(filePath);
+
+      return {
+        ...baseItem,
+        emulatorPlatform: platform,
+        launchPath: filePath,
+        meta: `${platform} | ROM`,
+        title: cleanMediaTitle(filePath),
+      };
+    }
+
     return {
       ...baseItem,
       launchPath: filePath,

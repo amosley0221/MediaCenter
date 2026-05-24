@@ -9,6 +9,7 @@ const { loadStreamingData } = require("./streaming-providers");
 
 const SOURCE_TITLES = {
   books: "Choose books, comics, or a reading folder",
+  emulators: "Choose an emulator ROMs folder",
   games: "Choose a games folder",
   local: "Choose local media files or folders",
   movies: "Choose a movies folder",
