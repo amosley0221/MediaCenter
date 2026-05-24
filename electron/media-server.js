@@ -91,6 +91,7 @@ function sanitizeItem(item) {
     addedAt: item.addedAt || "",
     backdropUrl: item.backdropUrl || "",
     coverUrl: item.coverUrl || "",
+    emulatorPlatform: item.emulatorPlatform || "",
     episodeNumber: item.episodeNumber || null,
     extension: item.extension || "",
     fileSize: item.fileSize || 0,
@@ -101,6 +102,7 @@ function sanitizeItem(item) {
     seasonNumber: item.seasonNumber || null,
     section: item.section,
     seriesTitle: item.seriesTitle || "",
+    source: item.source || "",
     title: item.title || "Untitled",
     updatedAt: item.updatedAt || item.addedAt || "",
   };
@@ -156,13 +158,16 @@ function groupTvSeries(tvItems) {
 function createLibraryPayload(library) {
   const movies = sortRecentItems(library.sections?.movies || []).map(sanitizeItem);
   const tv = sortRecentItems(library.sections?.tv || []).map(sanitizeItem);
+  const games = sortRecentItems(library.sections?.games || []).map(sanitizeItem);
 
   return {
     sections: {
+      games,
       movies,
       tv,
     },
     summary: {
+      games: games.length,
       movies: movies.length,
       sources: library.sources?.length || 0,
       tv: tv.length,
@@ -246,6 +251,13 @@ function createStatusPayload(status, settings) {
         remote: mediaServerSettings.remoteOriginal === false ? "adaptive" : "original",
         remoteFallbackMbps: clampMbps(mediaServerSettings.remoteFallbackMbps),
         sameNetwork: mediaServerSettings.sameNetworkOriginal === false ? "adaptive" : "original",
+      },
+      gameStreaming: {
+        enabled: settings.gameStreaming?.enabled !== false,
+        hostSaves: settings.gameStreaming?.hostSaves !== false,
+        launchEmulators: settings.gameStreaming?.launchEmulators !== false,
+        moonlightHint: settings.gameStreaming?.moonlightHint || "Install Moonlight on remote devices and pair it with Sunshine on this ToneOS PC.",
+        provider: settings.gameStreaming?.provider || "Sunshine / Moonlight",
       },
       remoteControl: true,
       transcoding: false,
@@ -347,7 +359,7 @@ function getClientHtml() {
         gap: 8px;
       }
 
-      .tabs button, .pin-card button, .episode button {
+      .tabs button, .pin-card button, .episode button, .game-launch button {
         min-height: 38px;
         padding: 8px 16px;
         border: 0;
@@ -445,6 +457,18 @@ function getClientHtml() {
         background: rgba(255, 255, 255, 0.06);
       }
 
+      .game-launch {
+        display: grid;
+        gap: 10px;
+      }
+
+      .game-launch button {
+        justify-self: start;
+        background: rgba(126, 217, 87, 0.92);
+        color: #061206;
+        font-weight: 750;
+      }
+
       .pin-card {
         display: grid;
         gap: 12px;
@@ -479,6 +503,7 @@ function getClientHtml() {
         <nav class="tabs" aria-label="Library sections">
           <button type="button" class="active" data-section="movies">Movies</button>
           <button type="button" data-section="tv">TV Shows</button>
+          <button type="button" data-section="games">Games</button>
         </nav>
       </header>
 
@@ -509,6 +534,7 @@ function getClientHtml() {
         library: null,
         pin: sessionStorage.getItem("toneos.pin") || "",
         section: "movies",
+        status: null,
       };
       const serverName = document.querySelector("#serverName");
       const serverStatus = document.querySelector("#serverStatus");
@@ -540,6 +566,30 @@ function getClientHtml() {
         return response.json();
       }
 
+      async function postRemoteCommand(command, payload = {}) {
+        const response = await fetch("/api/remote", {
+          body: JSON.stringify({ command, payload }),
+          headers: {
+            "Content-Type": "application/json",
+            ...getHeaders(),
+          },
+          method: "POST",
+        });
+
+        if (response.status === 401) {
+          pinPanel.hidden = false;
+          throw new Error("PIN_REQUIRED");
+        }
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || result.ok === false) {
+          throw new Error(result.error || result.message || "ToneOS could not start that game.");
+        }
+
+        return result;
+      }
+
       function escapeHtml(value) {
         return String(value || "").replace(/[&<>"']/g, (character) => ({
           "&": "&amp;",
@@ -558,11 +608,33 @@ function getClientHtml() {
 
       function playItem(item) {
         const pinQuery = state.pin ? "?pin=" + encodeURIComponent(state.pin) : "";
+        player.hidden = false;
         player.src = "/stream/" + encodeURIComponent(item.id) + pinQuery;
         playerPanel.hidden = false;
         playerTitle.textContent = item.seriesTitle ? item.seriesTitle + " - " + item.title : item.title;
         playerMeta.textContent = item.meta || item.extension || "Direct play";
         player.play().catch(() => {});
+      }
+
+      async function launchGame(item) {
+        player.pause();
+        player.removeAttribute("src");
+        player.hidden = true;
+        playerPanel.hidden = false;
+        playerTitle.textContent = item.title;
+        playerMeta.textContent = "Starting on the ToneOS host. Saves and save states remain on the host PC.";
+
+        try {
+          const result = await postRemoteCommand("game:launch", { id: item.id });
+          const moonlightHint = state.status?.capabilities?.gameStreaming?.moonlightHint || "Open Moonlight on this device for low-latency play.";
+          playerMeta.textContent = result.title
+            ? result.title + " started on the ToneOS host. " + moonlightHint
+            : "Game started on the ToneOS host. " + moonlightHint;
+        } catch (error) {
+          if (error.message !== "PIN_REQUIRED") {
+            playerMeta.textContent = error.message || "ToneOS could not start that game.";
+          }
+        }
       }
 
       function renderMovies() {
@@ -616,10 +688,34 @@ function getClientHtml() {
         });
       }
 
+      function renderGames() {
+        movieGrid.hidden = false;
+        seriesList.hidden = true;
+        sectionTitle.textContent = "Games";
+        movieGrid.replaceChildren();
+        const games = state.library?.sections?.games || [];
+        if (!games.length) {
+          movieGrid.innerHTML = '<p class="muted">No games or emulator ROMs have been scanned yet.</p>';
+          return;
+        }
+        games.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "card game-launch";
+          card.innerHTML = poster(item) + "<strong>" + escapeHtml(item.title) + "</strong><span class='muted'>" + escapeHtml(item.meta || "Host game") + "</span><button type='button'>Play on host</button>";
+          card.querySelector("button").addEventListener("click", (event) => {
+            event.stopPropagation();
+            launchGame(item);
+          });
+          movieGrid.append(card);
+        });
+      }
+
       function render() {
         tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.section === state.section));
         if (state.section === "tv") {
           renderTv();
+        } else if (state.section === "games") {
+          renderGames();
         } else {
           renderMovies();
         }
@@ -629,6 +725,7 @@ function getClientHtml() {
         try {
           const status = await api("/api/status");
           const qualityMode = status.capabilities?.quality?.sameNetwork === "original" ? "Original quality" : "Adaptive";
+          state.status = status;
           serverName.textContent = status.name;
           serverStatus.textContent = status.running ? qualityMode + " direct play ready on this network" : "Server is not running";
           pinPanel.hidden = true;

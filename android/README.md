@@ -32,6 +32,8 @@ Remote control stays protected by the Media Server same-network and PIN settings
 
 Open `Settings` in the launcher and enter the ToneOS Media Server URL shown on the PC, such as `http://192.168.1.50:8096`. Opening `MediaCenter` loads the server client inside the launcher so movies and TV shows can direct-play from the home theater PC when the device supports the file format.
 
+The same client also shows scanned games and emulator ROMs. Pressing `Play on host` starts the game on the ToneOS PC so emulator saves and save states stay on the host. Use Moonlight on Android with Sunshine on the ToneOS PC for the actual low-latency game stream and controller input.
+
 ## Updating Without USB
 
 Android will not let a sideloaded app silently update itself like a desktop app unless it is installed through a managed store, device-owner setup, or system image. The practical no-cable options are:

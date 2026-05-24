@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const path = require("node:path");
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { loadLibrary, upsertScannedSource, upsertSteamScan } = require("./media-library");
@@ -23,6 +24,14 @@ const FILE_AND_FOLDER_SOURCES = new Set(["books", "local"]);
 let mainWindow = null;
 let mediaServer = null;
 
+function getPublicItemId(item = {}) {
+  return crypto.createHash("sha256").update(item.id || item.path || item.title || "").digest("base64url").slice(0, 28);
+}
+
+function getLaunchableGameItems(library = {}) {
+  return (library.sections?.games || []).filter((item) => item.launchUrl || item.launchPath || item.path);
+}
+
 function getLibraryPath() {
   return path.join(app.getPath("userData"), "media-library.json");
 }
@@ -44,7 +53,47 @@ function getMediaServer() {
   return mediaServer;
 }
 
+async function launchGameFromHost(publicId, settings = {}) {
+  const library = await loadLibrary(getLibraryPath());
+  const item = getLaunchableGameItems(library).find((gameItem) => getPublicItemId(gameItem) === publicId);
+
+  if (!item) {
+    return { ok: false, error: "That game was not found in the ToneOS host library." };
+  }
+
+  if (item.source === "emulator" && !settings.gameStreaming?.launchEmulators) {
+    return { ok: false, error: "Launching emulator games from remote devices is disabled." };
+  }
+
+  if (item.launchUrl) {
+    await shell.openExternal(item.launchUrl);
+    return { ok: true, mode: "host-launch", title: item.title || "Game" };
+  }
+
+  const launchPath = item.launchPath || item.path;
+  const error = await shell.openPath(launchPath);
+
+  return {
+    ok: !error,
+    error,
+    mode: item.source === "emulator" ? "host-emulator" : "host-launch",
+    title: item.title || "Game",
+  };
+}
+
 async function handleRemoteCommand(remoteCommand = {}) {
+  const command = String(remoteCommand.command || "").trim().toLowerCase();
+
+  if (command === "game:launch") {
+    const settings = await loadSettings(getSettingsPath());
+
+    if (!settings.gameStreaming?.enabled) {
+      return { ok: false, error: "Host game streaming is disabled in ToneOS settings." };
+    }
+
+    return launchGameFromHost(String(remoteCommand.payload?.id || ""), settings);
+  }
+
   if (!mainWindow || mainWindow.isDestroyed()) {
     return { ok: false, error: "ToneOS is not open." };
   }

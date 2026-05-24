@@ -30,6 +30,23 @@ Same-network access is enabled by default. Add a PIN/password before sharing the
 
 The Media Server also exposes a PIN-protected `/api/remote` endpoint for trusted same-network clients such as the ToneOS Android Launcher. Remote commands can open Home, MediaCenter sections, Browser, Settings, Task Manager, or close the active ToneOS window.
 
+## Host Emulator Streaming
+
+ToneOS uses a host-streaming model for emulator play across devices. The ROM library, emulator app, save files, and save states stay on the ToneOS PC. Remote devices open the Media Server client, choose `Games`, and press `Play on host`; ToneOS launches that game on the PC.
+
+For low-latency video and controller input, pair this with Sunshine on the ToneOS PC and Moonlight on the remote device. ToneOS handles the host library and launch command; Sunshine/Moonlight handles the game stream.
+
+Setup flow:
+
+1. Install and configure your emulator on the ToneOS PC.
+2. Associate ROM file types with that emulator, or open ROMs once from Windows/macOS and choose the emulator as the default app.
+3. In ToneOS, use `MediaCenter > Add Media > Emulator ROMs` and select the ROM folder.
+4. Enable `Settings > Game Streaming > Enable host game streaming`.
+5. Enable `Settings > Media Server`, set a PIN, and use the client URL on phones, tablets, laptops, or another PC.
+6. Install Moonlight on the remote device and pair it with Sunshine on the ToneOS PC.
+
+When a remote device starts a ROM, saves remain on the host because the emulator is running on the ToneOS PC.
+
 ## Android Launcher
 
 The `android/` folder contains the first native ToneOS Android Launcher scaffold. Open that folder in Android Studio to build and install it on an Android phone, tablet, or Android TV device.
@@ -58,6 +75,8 @@ To control the PC from Android:
 - Steam library scan through `libraryfolders.vdf` and `appmanifest_*.acf`.
 - Local scanner imports real movie, TV episode, music, book, and local game files into persistent MediaCenter shelves.
 - Scanned Steam games persist in the Games section with Steam cover URLs and `steam://rungameid` launch links.
+- Emulator ROM folders persist in the Games section and can be launched from the host through the Media Server client.
+- Host emulator streaming keeps ROMs and saves on the ToneOS PC while remote devices use Sunshine/Moonlight for low-latency play.
 - Source choices persist in local storage for this prototype.
 - The desktop media library is saved in Electron app data as `media-library.json`.
 - Settings are real persisted controls in Electron app data as `settings.json`.

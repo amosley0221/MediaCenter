@@ -198,6 +198,13 @@ const DEFAULT_APP_SETTINGS = {
     youtubeTvEnabled: true,
     youtubeTvUrl: "https://tv.youtube.com/",
   },
+  gameStreaming: {
+    enabled: true,
+    hostSaves: true,
+    launchEmulators: true,
+    moonlightHint: "Install Moonlight on remote devices and pair it with Sunshine on this ToneOS PC.",
+    provider: "Sunshine / Moonlight",
+  },
   mediaServer: {
     directPlay: true,
     discovery: true,
@@ -896,6 +903,10 @@ function mergeAppSettings(settings = {}) {
     liveTv: {
       ...DEFAULT_APP_SETTINGS.liveTv,
       ...(settings.liveTv || {}),
+    },
+    gameStreaming: {
+      ...DEFAULT_APP_SETTINGS.gameStreaming,
+      ...(settings.gameStreaming || {}),
     },
     mediaServer: {
       ...DEFAULT_APP_SETTINGS.mediaServer,

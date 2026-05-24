@@ -545,6 +545,19 @@
               </span>
               <h2>Controllers</h2>
             </button>
+            <button type="button" class="settings-card" data-settings-section="game-streaming">
+              <span class="tile-icon icon-games" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 15h4" />
+                  <path d="M9 13v4" />
+                  <path d="M15 14.5h.01" />
+                  <path d="M18 16h.01" />
+                  <path d="M6.7 9h10.6a4.4 4.4 0 0 1 4.1 3l.5 2.1a3.6 3.6 0 0 1-6 3.4L14 16H10l-1.9 1.5a3.6 3.6 0 0 1-6-3.4L2.6 12a4.4 4.4 0 0 1 4.1-3Z" />
+                  <path d="M4 4h16" />
+                </svg>
+              </span>
+              <h2>Game Streaming</h2>
+            </button>
             <button type="button" class="settings-card" data-settings-section="themes">
               <span class="tile-icon icon-settings" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -653,6 +666,33 @@
               <label class="setting-field">
                 <span>Pointer speed</span>
                 <input type="range" name="controllers.pointerSpeed" min="1" max="10" step="1" />
+              </label>
+            </section>
+
+            <section class="settings-section" data-settings-panel="game-streaming" hidden>
+              <header>
+                <h2>Game Streaming</h2>
+                <span>Host emulator play</span>
+              </header>
+              <label class="setting-toggle">
+                <input type="checkbox" name="gameStreaming.enabled" />
+                <span>Enable host game streaming</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="gameStreaming.launchEmulators" />
+                <span>Launch emulator ROMs on this PC</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" name="gameStreaming.hostSaves" />
+                <span>Keep emulator saves on this PC</span>
+              </label>
+              <label class="setting-field">
+                <span>Streaming provider</span>
+                <input type="text" name="gameStreaming.provider" autocomplete="off" spellcheck="false" />
+              </label>
+              <label class="setting-field setting-field-wide">
+                <span>Remote device note</span>
+                <input type="text" name="gameStreaming.moonlightHint" autocomplete="off" spellcheck="false" />
               </label>
             </section>
 
