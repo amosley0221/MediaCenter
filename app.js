@@ -71,6 +71,7 @@ const settingsPanels = [...document.querySelectorAll(".settings-section")];
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const settingSelects = [...document.querySelectorAll("[data-setting-select]")];
+const secretToggleButtons = [...document.querySelectorAll("[data-secret-toggle]")];
 const streamingProviderStatus = document.querySelector("#streamingProviderStatus");
 const refreshMetadataButton = document.querySelector("#refreshMetadataButton");
 const refreshStreamingProviders = document.querySelector("#refreshStreamingProviders");
@@ -695,6 +696,20 @@ async function saveSettingSelectChoice(selectRoot, value) {
   setSettingsStatus("Saving appearance...");
   await saveAppSettings(readSettingsForm(), "Appearance saved.");
   selectRoot.querySelector(".tone-select-button")?.focus();
+}
+
+function toggleSecretField(button) {
+  const input = button.closest(".setting-secret-control")?.querySelector("input");
+
+  if (!input) {
+    return;
+  }
+
+  const shouldShow = input.type === "password";
+  input.type = shouldShow ? "text" : "password";
+  button.textContent = shouldShow ? "Hide" : "Show";
+  button.setAttribute("aria-pressed", String(shouldShow));
+  button.setAttribute("aria-label", `${shouldShow ? "Hide" : "Show"} ${input.labels?.[0]?.textContent || "secret value"}`);
 }
 
 function readSettingsForm() {
@@ -3462,6 +3477,12 @@ settingSelects.forEach((selectRoot) => {
         options[nextIndex].focus();
       }
     });
+  });
+});
+
+secretToggleButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    toggleSecretField(button);
   });
 });
 

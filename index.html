@@ -811,10 +811,21 @@
                 <input type="checkbox" name="streamingProviders.youtubeEnabled" />
                 <span>YouTube Data API</span>
               </label>
-              <label class="setting-field">
-                <span>YouTube API key</span>
-                <input type="password" name="streamingProviders.youtubeApiKey" autocomplete="off" spellcheck="false" />
-              </label>
+              <div class="setting-field">
+                <label for="youtubeApiKey">YouTube API key</label>
+                <div class="setting-secret-control">
+                  <input
+                    id="youtubeApiKey"
+                    type="password"
+                    name="streamingProviders.youtubeApiKey"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button type="button" data-secret-toggle aria-pressed="false" aria-label="Show YouTube API key">
+                    Show
+                  </button>
+                </div>
+              </div>
               <label class="setting-field">
                 <span>YouTube OAuth token</span>
                 <input type="password" name="streamingProviders.youtubeAccessToken" autocomplete="off" spellcheck="false" />
@@ -843,14 +854,36 @@
                 <input type="checkbox" name="streamingProviders.twitchEnabled" />
                 <span>Twitch Helix API</span>
               </label>
-              <label class="setting-field">
-                <span>Twitch Client ID</span>
-                <input type="password" name="streamingProviders.twitchClientId" autocomplete="off" spellcheck="false" />
-              </label>
-              <label class="setting-field">
-                <span>Twitch access token</span>
-                <input type="password" name="streamingProviders.twitchAccessToken" autocomplete="off" spellcheck="false" />
-              </label>
+              <div class="setting-field">
+                <label for="twitchClientId">Twitch Client ID</label>
+                <div class="setting-secret-control">
+                  <input
+                    id="twitchClientId"
+                    type="password"
+                    name="streamingProviders.twitchClientId"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button type="button" data-secret-toggle aria-pressed="false" aria-label="Show Twitch Client ID">
+                    Show
+                  </button>
+                </div>
+              </div>
+              <div class="setting-field">
+                <label for="twitchAccessToken">Twitch access token</label>
+                <div class="setting-secret-control">
+                  <input
+                    id="twitchAccessToken"
+                    type="password"
+                    name="streamingProviders.twitchAccessToken"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button type="button" data-secret-toggle aria-pressed="false" aria-label="Show Twitch access token">
+                    Show
+                  </button>
+                </div>
+              </div>
               <label class="setting-field">
                 <span>Your Twitch login</span>
                 <input type="text" name="streamingProviders.twitchUserLogin" autocomplete="off" spellcheck="false" />
