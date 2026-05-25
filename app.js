@@ -90,6 +90,7 @@ const BROWSER_CHROME_HIDE_DELAY_MS = 140;
 const DEFAULT_FLOATING_WINDOW_WIDTH = 980;
 const DEFAULT_FLOATING_WINDOW_HEIGHT = 620;
 const DEFAULT_BROWSER_HOME = "https://example.com";
+const HOME_SHELF_LIMIT = 15;
 const MEDIA_SOURCE_STORAGE_KEY = "mediacenter.sources.v1";
 const BROWSER_HOME_STORAGE_KEY = "mediacenter.browser.home.v1";
 const BROWSER_STARTUP_STORAGE_KEY = "mediacenter.browser.startup.v1";
@@ -1063,6 +1064,128 @@ function sortNewestFirst(items) {
   });
 }
 
+function limitHomeShelf(items) {
+  return items.slice(0, HOME_SHELF_LIMIT);
+}
+
+function getWatchProgress(item = {}) {
+  const value = [item.progress, item.watchProgress, item.playbackProgress, item.percentComplete]
+    .map(Number)
+    .find((candidate) => Number.isFinite(candidate) && candidate > 0);
+
+  if (!value) {
+    return 0;
+  }
+
+  return value <= 1 ? Math.round(value * 100) : Math.min(Math.round(value), 100);
+}
+
+function isInProgress(item) {
+  const progress = getWatchProgress(item);
+
+  if (progress > 0 && progress < 95) {
+    return true;
+  }
+
+  const position = Number(item.playbackPosition || item.position || item.resumePosition || 0);
+  const duration = Number(item.duration || item.runtime || 0);
+
+  return position > 0 && (!duration || position < duration * 0.95);
+}
+
+function isWatched(item) {
+  return Boolean(item.watched || item.completedAt || item.finishedAt || getWatchProgress(item) >= 95);
+}
+
+function getPlaybackSortTime(item) {
+  return new Date(
+    item.lastPlayedAt ||
+      item.playedAt ||
+      item.watchedAt ||
+      item.updatedAt ||
+      item.addedAt ||
+      0,
+  ).getTime();
+}
+
+function getMediaItemKey(item) {
+  return item.id || item.path || `${item.section || "media"}:${item.title}`;
+}
+
+function dedupeMediaItems(items) {
+  const seen = new Set();
+
+  return items.filter((item) => {
+    const key = getMediaItemKey(item);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function getEpisodeOrder(episode) {
+  return (episode.seasonNumber || 1) * 1000 + (episode.episodeNumber || 1);
+}
+
+function getNextEpisodeItems(episodes) {
+  const seriesMap = new Map();
+
+  episodes.forEach((episode) => {
+    const seriesTitle = episode.seriesTitle || episode.title;
+    const seriesEpisodes = seriesMap.get(seriesTitle) || [];
+
+    seriesEpisodes.push(episode);
+    seriesMap.set(seriesTitle, seriesEpisodes);
+  });
+
+  return [...seriesMap.values()]
+    .map((seriesEpisodes) => {
+      const sortedEpisodes = [...seriesEpisodes].sort((a, b) => getEpisodeOrder(a) - getEpisodeOrder(b));
+      const lastWatchedEpisode = sortedEpisodes.filter(isWatched).at(-1);
+
+      if (!lastWatchedEpisode) {
+        return null;
+      }
+
+      const nextEpisode = sortedEpisodes.find((episode) => {
+        return (
+          getEpisodeOrder(episode) > getEpisodeOrder(lastWatchedEpisode) &&
+          !isWatched(episode) &&
+          !isInProgress(episode)
+        );
+      });
+
+      if (!nextEpisode) {
+        return null;
+      }
+
+      return {
+        ...nextEpisode,
+        meta: `Next episode | ${nextEpisode.meta || nextEpisode.seriesTitle || "TV"}`,
+        status: "Next",
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildContinueWatchingItems(movies, episodes) {
+  const inProgressItems = [...movies, ...episodes]
+    .filter(isInProgress)
+    .map((item) => ({
+      ...item,
+      progress: getWatchProgress(item),
+      status: "Resume",
+    }))
+    .sort((a, b) => getPlaybackSortTime(b) - getPlaybackSortTime(a));
+  const nextEpisodes = getNextEpisodeItems(episodes);
+
+  return limitHomeShelf(dedupeMediaItems([...inProgressItems, ...sortNewestFirst(nextEpisodes)]));
+}
+
 function getSectionItems(section) {
   return desktopLibrary?.sections?.[section] || [];
 }
@@ -1215,21 +1338,20 @@ function buildRealGameShelves() {
 }
 
 function buildRealHomeShelves() {
-  const sections = ["movies", "tv", "music", "books", "games"];
-  const allItems = sections.flatMap((section) => {
-    if (section === "tv") {
-      return buildSeriesItems(getSectionItems("tv")).map((item) => ({ ...item, section: "tv" }));
-    }
-
-    return getSectionItems(section).map((item) => cloneLibraryItem(item, section));
-  });
-  const recentItems = sections.flatMap((section) => {
-    return getSectionItems(section).map((item) => cloneLibraryItem(item, section));
-  });
+  const movies = getSectionItems("movies").map((item) => cloneLibraryItem(item, "movies"));
+  const episodes = getSectionItems("tv").map((item) => cloneLibraryItem(item, "tv"));
+  const shows = buildSeriesItems(episodes).map((item) => ({ ...item, section: "tv" }));
+  const games = getSectionItems("games").map((item) => cloneLibraryItem(item, "games"));
+  const music = getSectionItems("music").map((item) => cloneLibraryItem(item, "music"));
+  const books = getSectionItems("books").map((item) => cloneLibraryItem(item, "books"));
 
   return [
-    createRealShelf("From Your Library", sortNewestFirst(allItems).slice(0, 16)),
-    createRealShelf("Recently Scanned", sortNewestFirst(recentItems).slice(0, 16)),
+    createRealShelf("Continue Watching", buildContinueWatchingItems(movies, episodes)),
+    createRealShelf("Recently Added Movies", limitHomeShelf(sortNewestFirst(movies))),
+    createRealShelf("Recently Added Shows", limitHomeShelf(sortNewestFirst(shows))),
+    createRealShelf("Recently Added Games", limitHomeShelf(sortNewestFirst(games))),
+    createRealShelf("Recently Added Music", limitHomeShelf(sortNewestFirst(music))),
+    createRealShelf("Recently Added Books", limitHomeShelf(sortNewestFirst(books))),
   ].filter(Boolean);
 }
 
@@ -1242,7 +1364,7 @@ function applyDesktopLibrary(library) {
   removeRealShelves(mediaHome);
   Object.values(mediaCatalog).forEach(removeRealShelves);
 
-  mediaHome.shelves.unshift(...buildRealHomeShelves());
+  mediaHome.shelves.push(...buildRealHomeShelves());
   mediaCatalog.movies.shelves.unshift(...buildRealMovieShelves());
   mediaCatalog.tv.shelves.unshift(...buildRealTvShelves());
   mediaCatalog.music.shelves.unshift(...buildRealMusicShelves());
