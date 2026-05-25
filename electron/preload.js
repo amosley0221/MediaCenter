@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld(
     loadLibrary: () => ipcRenderer.invoke("media:load-library"),
     openMediaItem: (item) => ipcRenderer.invoke("media:open-item", item),
     pickSourceFolder: (sourceKey) => ipcRenderer.invoke("media:pick-source-folder", { sourceKey }),
+    refreshMetadata: () => ipcRenderer.invoke("media:refresh-metadata"),
     revealPath: (filePath) => ipcRenderer.invoke("media:reveal-path", filePath),
     scanMediaSource: (sourceKey, paths) => ipcRenderer.invoke("media:scan-source", { sourceKey, paths }),
     scanSteamLibrary: () => ipcRenderer.invoke("media:scan-steam"),

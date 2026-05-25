@@ -85,6 +85,7 @@ const IGNORED_DIRECTORIES = new Set([
 const MAX_SCAN_DEPTH = 8;
 const MAX_SCAN_ITEMS = 5000;
 const MAX_METADATA_LOOKUPS = 24;
+const MAX_METADATA_REFRESH_LOOKUPS = 300;
 const MUSICBRAINZ_USER_AGENT = "MediaCenter/0.1.0 (personal desktop media library)";
 
 function createEmptyLibrary() {
@@ -383,22 +384,133 @@ async function getMetadataForItem(item, metadataSettings = {}) {
   return null;
 }
 
-async function enrichItemsWithMetadata(items, metadataSettings = {}) {
+function canFetchMetadataForItem(item, metadataSettings = {}) {
+  if (item.section === "movies" || item.section === "tv") {
+    return Boolean(metadataSettings.tmdbEnabled && metadataSettings.tmdbApiKey?.trim());
+  }
+
+  if (item.section === "games") {
+    return Boolean(metadataSettings.rawgEnabled && metadataSettings.rawgApiKey?.trim());
+  }
+
+  if (item.section === "books") {
+    return Boolean(metadataSettings.openLibraryEnabled);
+  }
+
+  if (item.section === "music") {
+    return Boolean(metadataSettings.musicBrainzEnabled);
+  }
+
+  return false;
+}
+
+function getMetadataLookupTitle(item) {
+  return item.section === "tv" ? item.seriesTitle || item.title : item.title;
+}
+
+function getMetadataCacheKey(item) {
+  return `${item.section}:${cleanProviderQuery(getMetadataLookupTitle(item)).toLowerCase()}`;
+}
+
+function formatCachedMetadataForItem(item, metadata) {
+  if (!metadata) {
+    return null;
+  }
+
+  if (item.section === "tv" && metadata.metadata?.provider === "TMDb") {
+    const year = metadata.metadata.year;
+    return {
+      ...metadata,
+      meta: `${item.meta || "TV"}${year ? ` | ${year}` : ""}`,
+      title: item.title,
+    };
+  }
+
+  return metadata;
+}
+
+function hasMetadataArtwork(item) {
+  return Boolean(item.coverUrl || item.backdropUrl || item.headerUrl);
+}
+
+function didMetadataChange(previousItem = {}, nextItem = {}) {
+  const fields = ["backdropUrl", "coverUrl", "headerUrl", "meta", "title"];
+
+  if (fields.some((field) => (previousItem[field] || "") !== (nextItem[field] || ""))) {
+    return true;
+  }
+
+  return JSON.stringify(previousItem.metadata || {}) !== JSON.stringify(nextItem.metadata || {});
+}
+
+async function enrichItemsWithMetadata(items, metadataSettings = {}, options = {}) {
   const enrichedItems = [];
   let lookupCount = 0;
+  const lookupCache = options.lookupCache || new Map();
+  const maxLookups = options.maxLookups ?? MAX_METADATA_LOOKUPS;
+  const force = Boolean(options.force);
 
   for (const item of items) {
-    if (lookupCount >= MAX_METADATA_LOOKUPS) {
+    if (!canFetchMetadataForItem(item, metadataSettings) || (!force && hasMetadataArtwork(item))) {
+      enrichedItems.push(item);
+      continue;
+    }
+
+    const cacheKey = getMetadataCacheKey(item);
+
+    if (lookupCache.has(cacheKey)) {
+      const metadata = formatCachedMetadataForItem(item, lookupCache.get(cacheKey));
+      enrichedItems.push(metadata ? { ...item, ...metadata } : item);
+      continue;
+    }
+
+    if (lookupCount >= maxLookups) {
       enrichedItems.push(item);
       continue;
     }
 
     lookupCount += 1;
     const metadata = await getMetadataForItem(item, metadataSettings);
-    enrichedItems.push(metadata ? { ...item, ...metadata } : item);
+    lookupCache.set(cacheKey, metadata);
+    enrichedItems.push(metadata ? { ...item, ...formatCachedMetadataForItem(item, metadata) } : item);
   }
 
   return enrichedItems;
+}
+
+async function refreshLibraryMetadata(libraryPath, metadataSettings = {}) {
+  const library = await loadLibrary(libraryPath);
+  const lookupCache = new Map();
+  const nextSections = {};
+  const summary = {
+    scanned: 0,
+    updated: 0,
+  };
+
+  for (const [section, items] of Object.entries(library.sections || createEmptyLibrary().sections)) {
+    const enrichedItems = await enrichItemsWithMetadata(items, metadataSettings, {
+      force: true,
+      lookupCache,
+      maxLookups: MAX_METADATA_REFRESH_LOOKUPS,
+    });
+
+    summary.scanned += items.length;
+    summary.updated += enrichedItems.filter((item, index) => didMetadataChange(items[index], item)).length;
+    nextSections[section] = enrichedItems;
+  }
+
+  const savedLibrary = await saveLibrary(libraryPath, {
+    ...library,
+    sections: {
+      ...createEmptyLibrary().sections,
+      ...nextSections,
+    },
+  });
+
+  return {
+    library: savedLibrary,
+    summary,
+  };
 }
 
 function parseTvEpisode(filePath) {
@@ -841,6 +953,7 @@ async function upsertSteamScan(libraryPath, steamScan, metadataSettings = {}) {
 
 module.exports = {
   loadLibrary,
+  refreshLibraryMetadata,
   upsertScannedSource,
   upsertSteamScan,
 };

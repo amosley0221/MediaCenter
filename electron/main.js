@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
-const { loadLibrary, upsertScannedSource, upsertSteamScan } = require("./media-library");
+const { loadLibrary, refreshLibraryMetadata, upsertScannedSource, upsertSteamScan } = require("./media-library");
 const { loadLiveTvData } = require("./live-tv");
 const { createMediaServer } = require("./media-server");
 const { loadSettings, loadSettingsSync, saveSettings } = require("./settings-store");
@@ -212,6 +212,11 @@ ipcMain.handle("media:reveal-path", async (_event, filePath) => {
 
 ipcMain.handle("media:load-library", async () => {
   return loadLibrary(getLibraryPath());
+});
+
+ipcMain.handle("media:refresh-metadata", async () => {
+  const settings = await loadSettings(getSettingsPath());
+  return refreshLibraryMetadata(getLibraryPath(), settings.metadata);
 });
 
 ipcMain.handle("media:scan-source", async (_event, payload = {}) => {

@@ -72,6 +72,7 @@ const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const settingSelects = [...document.querySelectorAll("[data-setting-select]")];
 const streamingProviderStatus = document.querySelector("#streamingProviderStatus");
+const refreshMetadataButton = document.querySelector("#refreshMetadataButton");
 const refreshStreamingProviders = document.querySelector("#refreshStreamingProviders");
 const serverFolderButtons = [...document.querySelectorAll("[data-server-source]")];
 const mediaServerState = document.querySelector("#mediaServerState");
@@ -782,6 +783,45 @@ async function saveAppSettings(settings, statusText = "Settings saved.") {
   refreshMediaServerStatusView();
   loadStreamingProviderData();
   loadLiveTvData();
+}
+
+async function refreshLibraryMetadataFromSettings() {
+  if (!canUseDesktopBridge() || typeof desktopBridge.refreshMetadata !== "function") {
+    setSettingsStatus("Metadata refresh is available in the Electron app.");
+    return;
+  }
+
+  const nextSettings = readSettingsForm();
+
+  if (!nextSettings.metadata.tmdbEnabled || !nextSettings.metadata.tmdbApiKey?.trim()) {
+    setSettingsStatus("Turn on TMDb and add an API key for movie and TV covers.");
+    return;
+  }
+
+  if (refreshMetadataButton) {
+    refreshMetadataButton.disabled = true;
+    refreshMetadataButton.textContent = "Refreshing metadata...";
+  }
+
+  try {
+    await saveAppSettings(nextSettings, "Metadata settings saved.");
+    const result = await desktopBridge.refreshMetadata();
+
+    if (result?.library) {
+      applyDesktopLibrary(result.library);
+    }
+
+    const updated = result?.summary?.updated ?? 0;
+    const scanned = result?.summary?.scanned ?? 0;
+    setSettingsStatus(`Metadata refreshed. Updated ${updated} of ${scanned} library items.`);
+  } catch {
+    setSettingsStatus("Could not refresh metadata. Check your TMDb key and connection.");
+  } finally {
+    if (refreshMetadataButton) {
+      refreshMetadataButton.disabled = false;
+      refreshMetadataButton.textContent = "Refresh library metadata";
+    }
+  }
 }
 
 function renderMediaServerStatus(status = null) {
@@ -2452,15 +2492,21 @@ function createMediaCard(item, section, index) {
   article.className = "media-card";
   article.type = "button";
   article.setAttribute("aria-label", `Open ${item.title}`);
+  article.classList.toggle("episode-card", visualSection === "tv" && Boolean(item.episodeNumber));
   article.classList.toggle("has-seasons", Boolean(item.seasons));
   article.classList.toggle("is-service-card", Boolean(item.brand));
   cover.className = `media-cover poster-${visualSection}`;
   if (item.brand) {
     cover.classList.add(`service-${item.brand}`);
   }
-  if (item.coverUrl) {
+  const artworkUrl =
+    visualSection === "tv" && item.episodeNumber && item.backdropUrl
+      ? item.backdropUrl
+      : item.coverUrl || item.backdropUrl || item.headerUrl;
+
+  if (artworkUrl) {
     cover.classList.add("has-cover");
-    cover.style.backgroundImage = `linear-gradient(transparent, rgba(7, 8, 26, 0.72)), url("${String(item.coverUrl).replace(/"/g, "%22")}")`;
+    cover.style.backgroundImage = `linear-gradient(transparent, rgba(7, 8, 26, 0.72)), url("${String(artworkUrl).replace(/"/g, "%22")}")`;
   }
   cover.style.setProperty("--cover-shift", `${index * 18}deg`);
   initials.textContent = item.title
@@ -3497,6 +3543,10 @@ settingsForm.addEventListener("input", () => {
 settingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveAppSettings(readSettingsForm());
+});
+
+refreshMetadataButton?.addEventListener("click", () => {
+  refreshLibraryMetadataFromSettings();
 });
 
 refreshStreamingProviders?.addEventListener("click", () => {
