@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">ToneOS app icon</title>
+  <desc id="desc">A dark rounded ToneOS icon with angular cyberpunk lettering and neon cyan and magenta accents.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050611"/>
+      <stop offset="0.5" stop-color="#0b1029"/>
+      <stop offset="1" stop-color="#12081d"/>
+    </linearGradient>
+    <radialGradient id="cyanGlow" cx="28%" cy="22%" r="68%">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity="0.52"/>
+      <stop offset="0.42" stop-color="#2168ff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#050611" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="pinkGlow" cx="77%" cy="76%" r="58%">
+      <stop offset="0" stop-color="#ff2ed1" stop-opacity="0.46"/>
+      <stop offset="0.42" stop-color="#6f39ff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#050611" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="outerGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.00 0 0 0 0 0.85 0 0 0 0 1.00 0 0 0 0.9 0" result="cyan"/>
+      <feMerge>
+        <feMergeNode in="cyan"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="pinkBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <clipPath id="round">
+      <rect x="56" y="56" width="912" height="912" rx="212"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#050611"/>
+  <rect x="56" y="56" width="912" height="912" rx="212" fill="url(#bg)"/>
+  <g clip-path="url(#round)">
+    <rect x="56" y="56" width="912" height="912" fill="url(#cyanGlow)"/>
+    <rect x="56" y="56" width="912" height="912" fill="url(#pinkGlow)"/>
+    <path d="M74 690 C258 590 392 646 536 712 C674 776 800 798 966 684 L966 970 L74 970 Z" fill="#19115a" opacity="0.32"/>
+    <path d="M84 245 L267 148 L391 178 L237 240 Z" fill="#00e5ff" opacity="0.18"/>
+    <path d="M688 210 L948 310 L835 360 L615 269 Z" fill="#ff2ed1" opacity="0.16"/>
+    <g stroke="#ffffff" stroke-opacity="0.055" stroke-width="2">
+      <path d="M142 120 L142 910"/>
+      <path d="M304 84 L304 940"/>
+      <path d="M486 72 L486 948"/>
+      <path d="M670 84 L670 940"/>
+      <path d="M852 120 L852 910"/>
+      <path d="M96 240 L928 240"/>
+      <path d="M84 424 L940 424"/>
+      <path d="M84 608 L940 608"/>
+      <path d="M96 792 L928 792"/>
+    </g>
+  </g>
+
+  <rect x="56" y="56" width="912" height="912" rx="212" fill="none" stroke="#0a0c18" stroke-width="36"/>
+  <rect x="72" y="72" width="880" height="880" rx="196" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="4"/>
+
+  <g transform="translate(82 372) skewX(-13)" filter="url(#outerGlow)">
+    <text x="10" y="154"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="190"
+      font-weight="900"
+      letter-spacing="-8"
+      fill="#00e5ff"
+      stroke="#061026"
+      stroke-width="22"
+      paint-order="stroke fill">TONE</text>
+    <text x="10" y="154"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="190"
+      font-weight="900"
+      letter-spacing="-8"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="4"
+      stroke-opacity="0.94">TONE</text>
+  </g>
+
+  <g transform="translate(70 360) skewX(-13)" opacity="0.9" filter="url(#pinkBlur)">
+    <text x="10" y="154"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="190"
+      font-weight="900"
+      letter-spacing="-8"
+      fill="#ff2ed1">TONE</text>
+  </g>
+
+  <g transform="translate(492 372) skewX(-11)">
+    <text x="0" y="154"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="190"
+      font-weight="900"
+      letter-spacing="-6"
+      fill="#ff2ed1"
+      stroke="#061026"
+      stroke-width="22"
+      paint-order="stroke fill">OS</text>
+    <text x="0" y="154"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="190"
+      font-weight="900"
+      letter-spacing="-6"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="4"
+      stroke-opacity="0.9">OS</text>
+  </g>
+
+  <g fill="#00e5ff" opacity="0.92">
+    <path d="M157 298 L240 257 L209 327 Z"/>
+    <path d="M320 293 L409 262 L378 338 Z"/>
+    <path d="M521 293 L598 252 L586 324 Z"/>
+  </g>
+  <g fill="#ff2ed1" opacity="0.9">
+    <path d="M758 352 L886 305 L820 404 Z"/>
+    <path d="M702 632 L866 672 L720 706 Z"/>
+  </g>
+  <path d="M178 670 L836 545" fill="none" stroke="#00e5ff" stroke-width="13" stroke-linecap="round" opacity="0.78"/>
+  <path d="M356 724 L858 625" fill="none" stroke="#ff2ed1" stroke-width="11" stroke-linecap="round" opacity="0.74"/>
+</svg>

@@ -127,6 +127,7 @@ function createWindow() {
     backgroundColor: "#000000",
     frame: false,
     fullscreen: process.env.MEDIA_CENTER_WINDOWED !== "1" && settings.display.fullscreenStartup,
+    icon: path.join(__dirname, "..", "assets", "toneos-icon.png"),
     autoHideMenuBar: true,
     show: false,
     webPreferences: {

@@ -40,6 +40,7 @@
       "output": "dist"
     },
     "win": {
+      "icon": "assets/toneos-icon.ico",
       "signAndEditExecutable": false,
       "target": [
         "nsis",
