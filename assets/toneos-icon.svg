@@ -17,6 +17,12 @@
       <stop offset="0.42" stop-color="#6f39ff" stop-opacity="0.22"/>
       <stop offset="1" stop-color="#050611" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00e5ff"/>
+      <stop offset="0.42" stop-color="#16d8ff"/>
+      <stop offset="0.55" stop-color="#ff2ed1"/>
+      <stop offset="1" stop-color="#ff2ed1"/>
+    </linearGradient>
     <filter id="outerGlow" x="-25%" y="-25%" width="150%" height="150%">
       <feGaussianBlur stdDeviation="9" result="blur"/>
       <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.00 0 0 0 0 0.85 0 0 0 0 1.00 0 0 0 0.9 0" result="cyan"/>
@@ -57,55 +63,47 @@
   <rect x="56" y="56" width="912" height="912" rx="212" fill="none" stroke="#0a0c18" stroke-width="36"/>
   <rect x="72" y="72" width="880" height="880" rx="196" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="4"/>
 
-  <g transform="translate(82 372) skewX(-13)" filter="url(#outerGlow)">
-    <text x="10" y="154"
+  <g transform="translate(494 350) skewX(-12)" opacity="0.82" filter="url(#pinkBlur)">
+    <text x="0" y="172"
       font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
-      font-size="190"
+      font-size="178"
       font-weight="900"
-      letter-spacing="-8"
-      fill="#00e5ff"
+      letter-spacing="-10"
+      text-anchor="middle"
+      fill="#ff2ed1">TONEOS</text>
+  </g>
+
+  <g transform="translate(527 372) skewX(-12)" opacity="0.62" filter="url(#pinkBlur)">
+    <text x="0" y="172"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="178"
+      font-weight="900"
+      letter-spacing="-10"
+      text-anchor="middle"
+      fill="#00e5ff">TONEOS</text>
+  </g>
+
+  <g transform="translate(512 358) skewX(-12)" filter="url(#outerGlow)">
+    <text x="0" y="172"
+      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
+      font-size="178"
+      font-weight="900"
+      letter-spacing="-10"
+      text-anchor="middle"
+      fill="url(#wordmark)"
       stroke="#061026"
       stroke-width="22"
-      paint-order="stroke fill">TONE</text>
-    <text x="10" y="154"
+      paint-order="stroke fill">TONEOS</text>
+    <text x="0" y="172"
       font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
-      font-size="190"
+      font-size="178"
       font-weight="900"
-      letter-spacing="-8"
+      letter-spacing="-10"
+      text-anchor="middle"
       fill="none"
       stroke="#ffffff"
       stroke-width="4"
-      stroke-opacity="0.94">TONE</text>
-  </g>
-
-  <g transform="translate(70 360) skewX(-13)" opacity="0.9" filter="url(#pinkBlur)">
-    <text x="10" y="154"
-      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
-      font-size="190"
-      font-weight="900"
-      letter-spacing="-8"
-      fill="#ff2ed1">TONE</text>
-  </g>
-
-  <g transform="translate(492 372) skewX(-11)">
-    <text x="0" y="154"
-      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
-      font-size="190"
-      font-weight="900"
-      letter-spacing="-6"
-      fill="#ff2ed1"
-      stroke="#061026"
-      stroke-width="22"
-      paint-order="stroke fill">OS</text>
-    <text x="0" y="154"
-      font-family="Impact, Haettenschweiler, 'Arial Black', sans-serif"
-      font-size="190"
-      font-weight="900"
-      letter-spacing="-6"
-      fill="none"
-      stroke="#ffffff"
-      stroke-width="4"
-      stroke-opacity="0.9">OS</text>
+      stroke-opacity="0.92">TONEOS</text>
   </g>
 
   <g fill="#00e5ff" opacity="0.92">
