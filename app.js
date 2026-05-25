@@ -225,164 +225,24 @@ const mediaCatalog = {
     title: "Movies",
     searchPlaceholder: "Search movies",
     hero: {
-      label: "Continue Watching",
-      title: "Dune: Part Two",
-      text: "Resume in 4K HDR with surround audio and your watch progress intact.",
-      action: "Play",
+      label: "Movies",
+      title: "No Movies Added",
+      text: "Add a movies folder to fill this section with your local library.",
+      action: "Library",
     },
-    shelves: [
-      {
-        title: "Continue Watching",
-        items: [
-          { title: "Dune: Part Two", meta: "4K HDR | 42 min left", progress: 76 },
-          { title: "The Batman", meta: "4K HDR | 1 hr left", progress: 35 },
-          { title: "Top Gun: Maverick", meta: "Atmos | 28 min left", progress: 68 },
-          { title: "No Time to Die", meta: "HDR | 51 min left", progress: 44 },
-        ],
-      },
-      {
-        title: "New Movies",
-        items: [
-          { title: "Furiosa", meta: "4K HDR | Added today" },
-          { title: "Civil War", meta: "Dolby Vision | New" },
-          { title: "Inside Out 2", meta: "Family | New" },
-          { title: "The Fall Guy", meta: "Action | New" },
-          { title: "Godzilla x Kong", meta: "4K HDR | New" },
-        ],
-      },
-      {
-        title: "Recently Added",
-        items: [
-          { title: "Oppenheimer", meta: "IMAX | Added yesterday" },
-          { title: "Blade Runner 2049", meta: "Sci-fi | Added Mon" },
-          { title: "Arrival", meta: "Sci-fi | Added Mon" },
-          { title: "The Creator", meta: "HDR | Added Sun" },
-          { title: "Interstellar", meta: "IMAX | Added Sat" },
-        ],
-      },
-      {
-        title: "Collections",
-        items: [
-          { title: "Spider-Man", meta: "9 movies" },
-          { title: "Middle-earth", meta: "6 movies" },
-          { title: "Star Wars", meta: "12 movies" },
-          { title: "Christopher Nolan", meta: "11 movies" },
-          { title: "MonsterVerse", meta: "5 movies" },
-        ],
-      },
-    ],
+    shelves: [],
   },
   tv: {
     section: "tv",
     title: "TV Shows",
     searchPlaceholder: "Search TV shows",
     hero: {
-      label: "Next Episode",
-      title: "Foundation",
-      text: "Season 2, Episode 4 is ready. Series progress stays separate from the movie library.",
-      action: "Play",
+      label: "TV Shows",
+      title: "No TV Shows Added",
+      text: "Add a TV folder to organize shows by series and season.",
+      action: "Library",
     },
-    shelves: [
-      {
-        title: "Continue Watching",
-        items: [
-          { title: "Foundation", meta: "S2 E04 | Next up", progress: 48 },
-          { title: "The Bear", meta: "S3 E02 | In progress", progress: 42 },
-          { title: "Severance", meta: "S2 E01 | Next up", progress: 18 },
-          { title: "The Last of Us", meta: "S1 E07 | Resume", progress: 72 },
-        ],
-      },
-      {
-        title: "Series",
-        items: [
-          {
-            title: "Foundation",
-            meta: "2 seasons | 20 episodes",
-            seasons: [
-              {
-                title: "Season 1",
-                episodes: [
-                  { title: "The Emperor's Peace", meta: "E01 | 69 min", progress: 100 },
-                  { title: "Preparing to Live", meta: "E02 | 61 min", progress: 100 },
-                  { title: "The Mathematician's Ghost", meta: "E03 | 58 min", progress: 100 },
-                ],
-              },
-              {
-                title: "Season 2",
-                episodes: [
-                  { title: "In Seldon's Shadow", meta: "E01 | 49 min", progress: 100 },
-                  { title: "A Glimpse of Darkness", meta: "E02 | 52 min", progress: 100 },
-                  { title: "King and Commoner", meta: "E03 | 53 min", progress: 100 },
-                  { title: "Where the Stars Are Scattered Thinly", meta: "E04 | 50 min", progress: 48 },
-                ],
-              },
-            ],
-          },
-          {
-            title: "The Bear",
-            meta: "3 seasons | 28 episodes",
-            seasons: [
-              {
-                title: "Season 1",
-                episodes: [
-                  { title: "System", meta: "E01 | 27 min", progress: 100 },
-                  { title: "Hands", meta: "E02 | 31 min", progress: 100 },
-                ],
-              },
-              {
-                title: "Season 3",
-                episodes: [
-                  { title: "Tomorrow", meta: "E01 | 36 min", progress: 100 },
-                  { title: "Next", meta: "E02 | 32 min", progress: 42 },
-                ],
-              },
-            ],
-          },
-          {
-            title: "Severance",
-            meta: "2 seasons | 19 episodes",
-            seasons: [
-              {
-                title: "Season 1",
-                episodes: [
-                  { title: "Good News About Hell", meta: "E01 | 57 min", progress: 100 },
-                  { title: "Half Loop", meta: "E02 | 53 min", progress: 100 },
-                ],
-              },
-              {
-                title: "Season 2",
-                episodes: [
-                  { title: "Hello, Ms. Cobel", meta: "E01 | 51 min", progress: 18 },
-                  { title: "Goodbye, Mrs. Selvig", meta: "E02 | 50 min", progress: 0 },
-                ],
-              },
-            ],
-          },
-          { title: "Andor", meta: "2 seasons | 24 episodes" },
-          { title: "The Last of Us", meta: "1 season | 9 episodes" },
-        ],
-      },
-      {
-        title: "New Episodes",
-        items: [
-          { title: "Andor", meta: "S2 E06 | Added today" },
-          { title: "The Last of Us", meta: "S2 E02 | New" },
-          { title: "House of the Dragon", meta: "S2 E08 | New" },
-          { title: "Slow Horses", meta: "S4 E01 | New" },
-          { title: "Fallout", meta: "S1 E05 | New" },
-        ],
-      },
-      {
-        title: "Networks",
-        items: [
-          { title: "Apple TV", meta: "18 series" },
-          { title: "FX", meta: "12 series" },
-          { title: "HBO", meta: "24 series" },
-          { title: "Disney+", meta: "16 series" },
-          { title: "Prime Video", meta: "10 series" },
-        ],
-      },
-    ],
+    shelves: [],
   },
   streaming: {
     section: "streaming",
@@ -507,166 +367,36 @@ const mediaCatalog = {
     title: "Music",
     searchPlaceholder: "Search music",
     hero: {
-      label: "Now Playing",
-      title: "Late Night Drive",
-      text: "Albums, playlists, Plexamp, and receiver presets in one living-room music view.",
-      action: "Resume",
+      label: "Music",
+      title: "No Music Added",
+      text: "Add a music folder to build albums, tracks, and playlists from your files.",
+      action: "Library",
     },
-    shelves: [
-      {
-        title: "Continue Listening",
-        items: [
-          { title: "Random Access Memories", meta: "Daft Punk | Album", progress: 60 },
-          { title: "House Favorites", meta: "Playlist | 82 songs", progress: 20 },
-          { title: "Cinema Scores", meta: "Smart mix | 4 hr", progress: 35 },
-          { title: "Late Night Drive", meta: "Smart mix | 2 hr", progress: 48 },
-        ],
-      },
-      {
-        title: "New Albums",
-        items: [
-          { title: "Hit Me Hard and Soft", meta: "Billie Eilish | Album" },
-          { title: "Cowboy Carter", meta: "Beyonce | Album" },
-          { title: "Chromakopia", meta: "Tyler, The Creator | Album" },
-          { title: "GNX", meta: "Kendrick Lamar | Album" },
-          { title: "Short n' Sweet", meta: "Sabrina Carpenter | Album" },
-        ],
-      },
-      {
-        title: "Recently Added",
-        items: [
-          { title: "Blonde", meta: "Frank Ocean | Album" },
-          { title: "The College Dropout", meta: "Kanye West | Album" },
-          { title: "Discovery", meta: "Daft Punk | Album" },
-          { title: "Thriller", meta: "Michael Jackson | Album" },
-          { title: "Songs in the Key of Life", meta: "Stevie Wonder | Album" },
-        ],
-      },
-      {
-        title: "Playlists",
-        items: [
-          { title: "Movie Night", meta: "43 songs" },
-          { title: "Game Lobby", meta: "57 songs" },
-          { title: "Sunday Reset", meta: "35 songs" },
-          { title: "Workout", meta: "64 songs" },
-          { title: "Dinner", meta: "29 songs" },
-        ],
-      },
-    ],
+    shelves: [],
   },
   books: {
     section: "books",
     title: "Books",
     searchPlaceholder: "Search books",
     hero: {
-      label: "Continue Reading",
-      title: "Project Hail Mary",
-      text: "Books, comics, magazines, manuals, and PDFs share the same shelf language.",
-      action: "Read",
+      label: "Books",
+      title: "No Books Added",
+      text: "Add books, comics, magazines, manuals, or PDFs to fill this shelf.",
+      action: "Library",
     },
-    shelves: [
-      {
-        title: "Continue Reading",
-        items: [
-          { title: "Project Hail Mary", meta: "Andy Weir | 63%", progress: 63 },
-          { title: "Dune", meta: "Frank Herbert | 12%", progress: 12 },
-          { title: "Watchmen", meta: "Graphic novel | 45%", progress: 45 },
-          { title: "HTPC Manual", meta: "Personal PDF | 88%", progress: 88 },
-        ],
-      },
-      {
-        title: "New Books",
-        items: [
-          { title: "The Creative Act", meta: "Rick Rubin" },
-          { title: "Tomorrow, and Tomorrow, and Tomorrow", meta: "Gabrielle Zevin" },
-          { title: "The Will of the Many", meta: "James Islington" },
-          { title: "Starter Villain", meta: "John Scalzi" },
-          { title: "Fourth Wing", meta: "Rebecca Yarros" },
-        ],
-      },
-      {
-        title: "Recently Added",
-        items: [
-          { title: "The Martian", meta: "Andy Weir | EPUB" },
-          { title: "Neuromancer", meta: "William Gibson | EPUB" },
-          { title: "The Hobbit", meta: "J.R.R. Tolkien | EPUB" },
-          { title: "Sapiens", meta: "Yuval Noah Harari | Audiobook" },
-          { title: "Home Theater Notes", meta: "Personal PDF" },
-        ],
-      },
-      {
-        title: "Comics & Graphic Novels",
-        items: [
-          { title: "Saga", meta: "Volumes 1-10" },
-          { title: "Batman: Year One", meta: "Graphic novel" },
-          { title: "Maus", meta: "Complete edition" },
-          { title: "The Sandman", meta: "Omnibus" },
-          { title: "Akira", meta: "Box set" },
-        ],
-      },
-    ],
+    shelves: [],
   },
   games: {
     section: "games",
     title: "Games",
     searchPlaceholder: "Search games",
     hero: {
-      label: "Continue Playing",
-      title: "Forza Horizon 5",
-      text: "Steam, Xbox, Epic, GOG, emulators, and remote play share a controller-friendly cover shelf.",
-      action: "Play",
+      label: "Games",
+      title: "No Games Added",
+      text: "Scan Steam, add game folders, or add emulator ROMs to populate this section.",
+      action: "Library",
     },
-    shelves: [
-      {
-        title: "Continue Playing",
-        items: [
-          { title: "Forza Horizon 5", meta: "Xbox | Installed", progress: 90 },
-          { title: "Cyberpunk 2077", meta: "Steam | Installed", progress: 54 },
-          { title: "Hades II", meta: "Steam | Cloud sync", progress: 28 },
-          { title: "Halo Infinite", meta: "Xbox | Ready", progress: 8 },
-        ],
-      },
-      {
-        title: "Installed Games",
-        items: [
-          { title: "Starfield", meta: "Xbox | Installed" },
-          { title: "Baldur's Gate 3", meta: "Steam | Installed" },
-          { title: "Alan Wake 2", meta: "Epic | Installed" },
-          { title: "Elden Ring", meta: "Steam | Installed" },
-          { title: "Street Fighter 6", meta: "Steam | Installed" },
-        ],
-      },
-      {
-        title: "Recently Added",
-        items: [
-          { title: "Hades II", meta: "Steam | Added today" },
-          { title: "Indiana Jones", meta: "Xbox | Added Mon" },
-          { title: "Balatro", meta: "Steam | Added Sun" },
-          { title: "Prince of Persia", meta: "Ubisoft | Added Sat" },
-          { title: "Senua's Saga", meta: "Xbox | Added Fri" },
-        ],
-      },
-      {
-        title: "Emulators & Retro",
-        items: [
-          { title: "Super Mario World", meta: "Super Nintendo | ROM" },
-          { title: "The Legend of Zelda", meta: "NES | ROM" },
-          { title: "Mario Kart 64", meta: "Nintendo 64 | ROM" },
-          { title: "Sonic the Hedgehog 2", meta: "Sega Genesis | ROM" },
-          { title: "Metroid Prime", meta: "GameCube | ROM" },
-        ],
-      },
-      {
-        title: "Cloud & Remote Play",
-        items: [
-          { title: "GeForce NOW", meta: "Cloud library" },
-          { title: "Xbox Cloud", meta: "Game Pass" },
-          { title: "PlayStation Remote", meta: "Living room console" },
-          { title: "Moonlight", meta: "Gaming PC stream" },
-          { title: "Retro Collection", meta: "214 games" },
-        ],
-      },
-    ],
+    shelves: [],
   },
 };
 
@@ -675,97 +405,13 @@ const mediaHome = {
   title: "Home",
   searchPlaceholder: "Search all media",
   hero: {
-    label: "Continue Watching",
-    title: "Dune: Part Two",
-    text: "Jump back into your most recent movie, episode, album, book, or game.",
-    action: "Play",
+    label: "MediaCenter",
+    title: "Your Library",
+    text: "Add local folders or connect providers to populate MediaCenter with real media.",
+    action: "Library",
     posterSection: "movies",
   },
-  shelves: [
-    {
-      title: "Continue",
-      items: [
-        { title: "Dune: Part Two", meta: "Movie | 42 min left", progress: 76, section: "movies" },
-        { title: "Foundation", meta: "TV | S2 E04", progress: 48, section: "tv" },
-        { title: "Forza Horizon 5", meta: "Game | Resume", progress: 90, section: "games" },
-        { title: "Project Hail Mary", meta: "Book | 63%", progress: 63, section: "books" },
-        { title: "Late Night Drive", meta: "Music | Smart mix", progress: 48, section: "music" },
-      ],
-    },
-    {
-      title: "Recently Added",
-      items: [
-        { title: "Furiosa", meta: "Movie | Added today", section: "movies" },
-        { title: "Andor", meta: "TV | New episode", section: "tv" },
-        { title: "Hades II", meta: "Game | Added today", section: "games" },
-        { title: "The Creative Act", meta: "Book | New", section: "books" },
-        { title: "Cowboy Carter", meta: "Music | New album", section: "music" },
-      ],
-    },
-    {
-      title: "Streaming Services",
-      items: [
-        {
-          title: "YouTube",
-          meta: "Portal launcher",
-          section: "streaming",
-          brand: "youtube",
-          status: "Open",
-          target: "https://www.youtube.com/",
-        },
-        {
-          title: "Twitch",
-          meta: "Portal launcher",
-          section: "streaming",
-          brand: "twitch",
-          status: "Open",
-          target: "https://www.twitch.tv/",
-        },
-        {
-          title: "YouTube TV",
-          meta: "Live TV portal",
-          section: "live",
-          brand: "youtube-tv",
-          status: "Sign in",
-          target: "https://tv.youtube.com/",
-        },
-        {
-          title: "Netflix",
-          meta: "Portal launcher",
-          section: "streaming",
-          brand: "netflix",
-          status: "Sign in",
-          target: "https://www.netflix.com/",
-        },
-        {
-          title: "Hulu",
-          meta: "Portal launcher",
-          section: "streaming",
-          brand: "hulu",
-          status: "Sign in",
-          target: "https://www.hulu.com/",
-        },
-        {
-          title: "Prime Video",
-          meta: "Portal launcher",
-          section: "streaming",
-          brand: "prime",
-          status: "Sign in",
-          target: "https://www.primevideo.com/",
-        },
-      ],
-    },
-    {
-      title: "Favorites",
-      items: [
-        { title: "Blade Runner 2049", meta: "Movie | Favorite", section: "movies" },
-        { title: "The Bear", meta: "TV | Favorite", section: "tv" },
-        { title: "Cyberpunk 2077", meta: "Game | Favorite", section: "games" },
-        { title: "Dune", meta: "Book | Favorite", section: "books" },
-        { title: "Random Access Memories", meta: "Music | Favorite", section: "music" },
-      ],
-    },
-  ],
+  shelves: [],
 };
 
 const mediaLibrary = Object.values(mediaCatalog);
@@ -849,8 +495,8 @@ let browserFallbackTimer = null;
 let browserChromeHideTimer = null;
 let windowZIndex = 5;
 let pendingEndProcessKey = null;
-let activeTvSeriesTitle = "Foundation";
-let activeTvSeasonIndex = 1;
+let activeTvSeriesTitle = "";
+let activeTvSeasonIndex = 0;
 let currentMediaSection = "home";
 let openWindowRecords = [];
 let activeWindowKey = null;
@@ -1803,7 +1449,7 @@ async function loadDesktopLibrary() {
   try {
     applyDesktopLibrary(await desktopBridge.loadLibrary());
   } catch {
-    // The app can still run with its demo shelves if desktop storage is unavailable.
+    // Keep MediaCenter usable even if desktop storage is unavailable.
   }
 }
 
@@ -2051,7 +1697,7 @@ function createTaskPreview(record, meta) {
 
   const section = record.section || "home";
   const config = getMediaSection(section);
-  const shelf = config.shelves[0];
+  const previewItems = config.shelves.find((shelf) => shelf.items?.length)?.items || [];
   const label = document.createElement("span");
   const title = document.createElement("strong");
   const row = document.createElement("span");
@@ -2061,13 +1707,20 @@ function createTaskPreview(record, meta) {
   title.textContent = config.hero.title;
   row.className = "task-preview-row";
 
-  shelf.items.slice(0, 4).forEach((item, index) => {
+  previewItems.slice(0, 4).forEach((item, index) => {
     const tile = document.createElement("span");
     tile.className = `task-preview-tile poster-${item.section || config.section}`;
     tile.style.setProperty("--cover-shift", `${index * 20}deg`);
     tile.textContent = getInitials(item.title);
     row.append(tile);
   });
+
+  if (!previewItems.length) {
+    const tile = document.createElement("span");
+    tile.className = `task-preview-tile poster-${config.hero.posterSection || config.section}`;
+    tile.textContent = getInitials(config.hero.title);
+    row.append(tile);
+  }
 
   surface.append(label, title, row);
   preview.append(surface);
