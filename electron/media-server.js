@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
+const { fileURLToPath } = require("node:url");
 const { loadLiveTvData } = require("./live-tv");
 const { loadLibrary } = require("./media-library");
 
@@ -23,6 +24,12 @@ const VIDEO_MIME_TYPES = {
   ".ts": "video/mp2t",
   ".webm": "video/webm",
   ".wmv": "video/x-ms-wmv",
+};
+const IMAGE_MIME_TYPES = {
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
 };
 
 function clampPort(port) {
@@ -76,6 +83,14 @@ function getPublicId(item) {
   return crypto.createHash("sha256").update(item.id || item.path || item.title || "").digest("base64url").slice(0, 28);
 }
 
+function isLocalFileUrl(url = "") {
+  return String(url).startsWith("file://");
+}
+
+function normalizeArtworkUrl(url = "", itemId = "", kind = "cover") {
+  return isLocalFileUrl(url) ? `/artwork/${encodeURIComponent(itemId)}/${encodeURIComponent(kind)}` : url;
+}
+
 function getInitials(title = "") {
   return title
     .split(/\s+/)
@@ -87,17 +102,19 @@ function getInitials(title = "") {
 }
 
 function sanitizeItem(item) {
+  const id = getPublicId(item);
+
   return {
     addedAt: item.addedAt || "",
-    backdropUrl: item.backdropUrl || "",
-    coverUrl: item.coverUrl || "",
+    backdropUrl: normalizeArtworkUrl(item.backdropUrl || "", id, "backdrop"),
+    coverUrl: normalizeArtworkUrl(item.coverUrl || "", id, "cover"),
     description: item.description || "",
     emulatorPlatform: item.emulatorPlatform || "",
     episodeNumber: item.episodeNumber || null,
     extension: item.extension || "",
     fileSize: item.fileSize || 0,
-    headerUrl: item.headerUrl || "",
-    id: getPublicId(item),
+    headerUrl: normalizeArtworkUrl(item.headerUrl || "", id, "header"),
+    id,
     initials: getInitials(item.title || item.seriesTitle),
     meta: item.meta || "",
     metadata: item.metadata || {},
@@ -115,8 +132,16 @@ function getAllPlayableItems(library) {
   return [...(library.sections?.movies || []), ...(library.sections?.tv || [])].filter((item) => item.path);
 }
 
+function getAllLibraryItems(library) {
+  return Object.values(library.sections || {}).flat();
+}
+
 function findPlayableItem(library, publicId) {
   return getAllPlayableItems(library).find((item) => getPublicId(item) === publicId);
+}
+
+function findLibraryItem(library, publicId) {
+  return getAllLibraryItems(library).find((item) => getPublicId(item) === publicId);
 }
 
 function sortRecentItems(items) {
@@ -1046,6 +1071,43 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, hand
     if (url.pathname === "/api/live-tv") {
       const library = await loadLibrary(getLibraryPath());
       sendJson(response, 200, await loadLiveTvData(settings, library));
+      return;
+    }
+
+    const artworkMatch = url.pathname.match(/^\/artwork\/([^/]+)\/(cover|backdrop|header)$/);
+
+    if (artworkMatch) {
+      const library = await loadLibrary(getLibraryPath());
+      const item = findLibraryItem(library, decodeURIComponent(artworkMatch[1]));
+      const artworkUrl = item?.[`${decodeURIComponent(artworkMatch[2])}Url`] || "";
+
+      if (!isLocalFileUrl(artworkUrl)) {
+        sendJson(response, 404, { code: "ARTWORK_NOT_FOUND", message: "Artwork was not found on the server." });
+        return;
+      }
+
+      let artworkPath = "";
+
+      try {
+        artworkPath = fileURLToPath(artworkUrl);
+      } catch {
+        sendJson(response, 404, { code: "ARTWORK_NOT_FOUND", message: "Artwork path is invalid." });
+        return;
+      }
+
+      fs.stat(artworkPath, (statError, stats) => {
+        if (statError || !stats.isFile()) {
+          sendJson(response, 404, { code: "ARTWORK_NOT_FOUND", message: "Artwork file was not found on the server." });
+          return;
+        }
+
+        response.writeHead(200, {
+          "Cache-Control": "public, max-age=3600",
+          "Content-Length": stats.size,
+          "Content-Type": IMAGE_MIME_TYPES[path.extname(artworkPath).toLowerCase()] || "application/octet-stream",
+        });
+        fs.createReadStream(artworkPath).pipe(response);
+      });
       return;
     }
 

@@ -169,6 +169,8 @@ const DEFAULT_APP_SETTINGS = {
     taskbarReveal: true,
   },
   metadata: {
+    fallbackMetadataEnabled: true,
+    localArtworkEnabled: true,
     musicBrainzEnabled: false,
     openLibraryEnabled: false,
     rawgApiKey: "",
@@ -810,9 +812,18 @@ async function refreshLibraryMetadataFromSettings() {
   }
 
   const nextSettings = readSettingsForm();
+  const metadata = nextSettings.metadata || {};
+  const hasMetadataProvider = Boolean(
+    metadata.localArtworkEnabled ||
+      metadata.fallbackMetadataEnabled ||
+      (metadata.tmdbEnabled && metadata.tmdbApiKey?.trim()) ||
+      (metadata.rawgEnabled && metadata.rawgApiKey?.trim()) ||
+      metadata.openLibraryEnabled ||
+      metadata.musicBrainzEnabled,
+  );
 
-  if (!nextSettings.metadata.tmdbEnabled || !nextSettings.metadata.tmdbApiKey?.trim()) {
-    setSettingsStatus("Turn on TMDb and add an API key for movie and TV covers.");
+  if (!hasMetadataProvider) {
+    setSettingsStatus("Turn on at least one metadata provider or local artwork.");
     return;
   }
 
@@ -833,7 +844,7 @@ async function refreshLibraryMetadataFromSettings() {
     const scanned = result?.summary?.scanned ?? 0;
     setSettingsStatus(`Metadata refreshed. Updated ${updated} of ${scanned} library items.`);
   } catch {
-    setSettingsStatus("Could not refresh metadata. Check your TMDb key and connection.");
+    setSettingsStatus("Could not refresh metadata. Check your provider settings and connection.");
   } finally {
     if (refreshMetadataButton) {
       refreshMetadataButton.disabled = false;

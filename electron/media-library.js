@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const VIDEO_EXTENSIONS = new Set([
   ".avi",
@@ -87,6 +88,9 @@ const MAX_SCAN_ITEMS = 5000;
 const MAX_METADATA_LOOKUPS = 24;
 const MAX_METADATA_REFRESH_LOOKUPS = 300;
 const MUSICBRAINZ_USER_AGENT = "MediaCenter/0.1.0 (personal desktop media library)";
+const LOCAL_ARTWORK_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+const LOCAL_COVER_NAMES = ["poster", "cover", "folder", "movie", "front", "album"];
+const LOCAL_BACKDROP_NAMES = ["fanart", "backdrop", "background", "landscape"];
 
 function createEmptyLibrary() {
   return {
@@ -218,6 +222,104 @@ async function fetchJson(url, headers = {}) {
   return response.json();
 }
 
+function stripHtml(text = "") {
+  return String(text)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getLocalArtworkCandidates(directoryPath, names) {
+  return names.flatMap((name) => LOCAL_ARTWORK_EXTENSIONS.map((extension) => path.join(directoryPath, `${name}${extension}`)));
+}
+
+function getArtworkSearchDirectories(item) {
+  const itemPath = item.path || item.launchPath;
+
+  if (!itemPath) {
+    return [];
+  }
+
+  const itemDirectory = path.dirname(itemPath);
+  const searchDirectories = [itemDirectory];
+
+  if (item.section === "tv") {
+    searchDirectories.push(path.dirname(itemDirectory));
+  }
+
+  if (item.section === "music" || item.section === "books" || item.section === "games") {
+    searchDirectories.push(path.dirname(itemDirectory));
+  }
+
+  return [...new Set(searchDirectories.filter(Boolean))];
+}
+
+async function findFirstExistingFile(filePaths) {
+  for (const filePath of filePaths) {
+    if (await pathExists(filePath)) {
+      return filePath;
+    }
+  }
+
+  return "";
+}
+
+async function getLocalArtworkMetadata(item, metadataSettings = {}) {
+  if (metadataSettings.localArtworkEnabled === false) {
+    return null;
+  }
+
+  const itemPath = item.path || item.launchPath;
+  const searchDirectories = getArtworkSearchDirectories(item);
+
+  if (!itemPath || !searchDirectories.length) {
+    return null;
+  }
+
+  const baseName = path.basename(itemPath, path.extname(itemPath));
+  const coverCandidates = searchDirectories.flatMap((directoryPath) => [
+    ...getLocalArtworkCandidates(directoryPath, LOCAL_COVER_NAMES),
+    ...LOCAL_ARTWORK_EXTENSIONS.map((extension) => path.join(directoryPath, `${baseName}${extension}`)),
+  ]);
+  const backdropCandidates = searchDirectories.flatMap((directoryPath) =>
+    getLocalArtworkCandidates(directoryPath, LOCAL_BACKDROP_NAMES),
+  );
+  const [coverPath, backdropPath] = await Promise.all([
+    findFirstExistingFile(coverCandidates),
+    findFirstExistingFile(backdropCandidates),
+  ]);
+
+  if (!coverPath && !backdropPath) {
+    return null;
+  }
+
+  return {
+    backdropUrl: backdropPath ? pathToFileURL(backdropPath).href : "",
+    coverUrl: coverPath ? pathToFileURL(coverPath).href : "",
+    metadata: {
+      localArtwork: true,
+    },
+  };
+}
+
+function mergeItemMetadata(item, metadata = {}) {
+  if (!metadata) {
+    return item;
+  }
+
+  return {
+    ...item,
+    ...metadata,
+    backdropUrl: metadata.backdropUrl || item.backdropUrl || "",
+    coverUrl: metadata.coverUrl || item.coverUrl || "",
+    headerUrl: metadata.headerUrl || item.headerUrl || "",
+    metadata: {
+      ...(item.metadata || {}),
+      ...(metadata.metadata || {}),
+    },
+  };
+}
+
 function getTmdbPosterUrl(pathValue) {
   return pathValue ? `https://image.tmdb.org/t/p/w500${pathValue}` : "";
 }
@@ -261,6 +363,68 @@ async function getTmdbMetadata(item, mediaType, metadataSettings) {
         ? `${item.meta || "TV"}${year ? ` | ${year}` : ""}`
         : `${year || item.extension || "Movie"} | TMDb`,
     title: mediaType === "tv" ? item.title : result.title || result.name || item.title,
+  };
+}
+
+async function getItunesMovieMetadata(item, metadataSettings) {
+  if (metadataSettings.fallbackMetadataEnabled === false) {
+    return null;
+  }
+
+  const query = encodeURIComponent(cleanProviderQuery(item.title));
+  const data = await fetchJson(`https://itunes.apple.com/search?term=${query}&media=movie&entity=movie&limit=1`);
+  const result = data?.results?.[0];
+
+  if (!result) {
+    return null;
+  }
+
+  const releaseYear = String(result.releaseDate || "").slice(0, 4);
+  const coverUrl = result.artworkUrl100
+    ? result.artworkUrl100.replace(/100x100bb\.(jpg|png|webp)$/i, "600x900bb.$1")
+    : "";
+
+  return {
+    coverUrl,
+    metadata: {
+      overview: result.longDescription || result.shortDescription || "",
+      provider: "iTunes Search",
+      providerId: result.trackId || "",
+      rating: result.contentAdvisoryRating || "",
+      year: releaseYear,
+    },
+    meta: `${releaseYear || item.extension || "Movie"} | iTunes`,
+    title: result.trackName || item.title,
+  };
+}
+
+async function getTvMazeMetadata(item, metadataSettings) {
+  if (metadataSettings.fallbackMetadataEnabled === false) {
+    return null;
+  }
+
+  const queryTitle = item.seriesTitle || item.title;
+  const data = await fetchJson(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(cleanProviderQuery(queryTitle))}`);
+
+  if (!data) {
+    return null;
+  }
+
+  const year = String(data.premiered || "").slice(0, 4);
+
+  return {
+    coverUrl: data.image?.original || data.image?.medium || "",
+    metadata: {
+      genres: Array.isArray(data.genres) ? data.genres : [],
+      network: data.network?.name || data.webChannel?.name || "",
+      overview: stripHtml(data.summary || ""),
+      provider: "TVmaze",
+      providerId: data.id || "",
+      rating: data.rating?.average || null,
+      year,
+    },
+    meta: `${item.meta || "TV"}${year ? ` | ${year}` : ""}`,
+    title: item.title,
   };
 }
 
@@ -359,11 +523,11 @@ async function getMusicBrainzMetadata(item, metadataSettings) {
 async function getMetadataForItem(item, metadataSettings = {}) {
   try {
     if (item.section === "movies") {
-      return getTmdbMetadata(item, "movie", metadataSettings);
+      return (await getTmdbMetadata(item, "movie", metadataSettings)) || (await getItunesMovieMetadata(item, metadataSettings));
     }
 
     if (item.section === "tv") {
-      return getTmdbMetadata(item, "tv", metadataSettings);
+      return (await getTmdbMetadata(item, "tv", metadataSettings)) || (await getTvMazeMetadata(item, metadataSettings));
     }
 
     if (item.section === "games") {
@@ -384,9 +548,11 @@ async function getMetadataForItem(item, metadataSettings = {}) {
   return null;
 }
 
-function canFetchMetadataForItem(item, metadataSettings = {}) {
+function canFetchRemoteMetadataForItem(item, metadataSettings = {}) {
   if (item.section === "movies" || item.section === "tv") {
-    return Boolean(metadataSettings.tmdbEnabled && metadataSettings.tmdbApiKey?.trim());
+    return Boolean(
+      metadataSettings.fallbackMetadataEnabled !== false || (metadataSettings.tmdbEnabled && metadataSettings.tmdbApiKey?.trim()),
+    );
   }
 
   if (item.section === "games") {
@@ -404,6 +570,10 @@ function canFetchMetadataForItem(item, metadataSettings = {}) {
   return false;
 }
 
+function canFetchMetadataForItem(item, metadataSettings = {}) {
+  return Boolean(metadataSettings.localArtworkEnabled !== false || canFetchRemoteMetadataForItem(item, metadataSettings));
+}
+
 function getMetadataLookupTitle(item) {
   return item.section === "tv" ? item.seriesTitle || item.title : item.title;
 }
@@ -417,7 +587,7 @@ function formatCachedMetadataForItem(item, metadata) {
     return null;
   }
 
-  if (item.section === "tv" && metadata.metadata?.provider === "TMDb") {
+  if (item.section === "tv") {
     const year = metadata.metadata.year;
     return {
       ...metadata,
@@ -431,6 +601,10 @@ function formatCachedMetadataForItem(item, metadata) {
 
 function hasMetadataArtwork(item) {
   return Boolean(item.coverUrl || item.backdropUrl || item.headerUrl);
+}
+
+function hasProviderMetadata(item) {
+  return Boolean(item.metadata?.provider || item.metadata?.overview);
 }
 
 function didMetadataChange(previousItem = {}, nextItem = {}) {
@@ -451,28 +625,36 @@ async function enrichItemsWithMetadata(items, metadataSettings = {}, options = {
   const force = Boolean(options.force);
 
   for (const item of items) {
-    if (!canFetchMetadataForItem(item, metadataSettings) || (!force && hasMetadataArtwork(item))) {
+    if (!canFetchMetadataForItem(item, metadataSettings)) {
       enrichedItems.push(item);
       continue;
     }
 
-    const cacheKey = getMetadataCacheKey(item);
+    const localMetadata = await getLocalArtworkMetadata(item, metadataSettings);
+    const baseItem = localMetadata ? mergeItemMetadata(item, localMetadata) : item;
+
+    if (!canFetchRemoteMetadataForItem(baseItem, metadataSettings) || (!force && hasMetadataArtwork(baseItem) && hasProviderMetadata(baseItem))) {
+      enrichedItems.push(baseItem);
+      continue;
+    }
+
+    const cacheKey = getMetadataCacheKey(baseItem);
 
     if (lookupCache.has(cacheKey)) {
-      const metadata = formatCachedMetadataForItem(item, lookupCache.get(cacheKey));
-      enrichedItems.push(metadata ? { ...item, ...metadata } : item);
+      const metadata = formatCachedMetadataForItem(baseItem, lookupCache.get(cacheKey));
+      enrichedItems.push(metadata ? mergeItemMetadata(baseItem, metadata) : baseItem);
       continue;
     }
 
     if (lookupCount >= maxLookups) {
-      enrichedItems.push(item);
+      enrichedItems.push(baseItem);
       continue;
     }
 
     lookupCount += 1;
-    const metadata = await getMetadataForItem(item, metadataSettings);
+    const metadata = await getMetadataForItem(baseItem, metadataSettings);
     lookupCache.set(cacheKey, metadata);
-    enrichedItems.push(metadata ? { ...item, ...formatCachedMetadataForItem(item, metadata) } : item);
+    enrichedItems.push(metadata ? mergeItemMetadata(baseItem, formatCachedMetadataForItem(baseItem, metadata)) : baseItem);
   }
 
   return enrichedItems;

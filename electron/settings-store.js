@@ -24,6 +24,8 @@ const DEFAULT_SETTINGS = {
     taskbarReveal: true,
   },
   metadata: {
+    fallbackMetadataEnabled: true,
+    localArtworkEnabled: true,
     musicBrainzEnabled: false,
     openLibraryEnabled: false,
     rawgApiKey: "",
