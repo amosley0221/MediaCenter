@@ -154,18 +154,30 @@ function groupTvSeries(tvItems) {
   tvItems.forEach((item) => {
     const seriesTitle = item.seriesTitle || "TV Shows";
     const series = seriesMap.get(seriesTitle) || {
+      backdropUrl: "",
+      coverUrl: "",
+      headerUrl: "",
       id: crypto.createHash("sha256").update(seriesTitle).digest("base64url").slice(0, 18),
       initials: getInitials(seriesTitle),
+      meta: "",
+      metadata: {},
       seasons: new Map(),
       seriesTitle,
+      updatedAt: "",
     };
     const seasonNumber = item.seasonNumber || 1;
     const season = series.seasons.get(seasonNumber) || {
       episodes: [],
       seasonNumber,
     };
+    const sanitizedItem = sanitizeItem(item);
 
-    season.episodes.push(sanitizeItem(item));
+    season.episodes.push(sanitizedItem);
+    series.backdropUrl = series.backdropUrl || sanitizedItem.backdropUrl || "";
+    series.coverUrl = series.coverUrl || sanitizedItem.coverUrl || "";
+    series.headerUrl = series.headerUrl || sanitizedItem.headerUrl || "";
+    series.metadata = Object.keys(series.metadata || {}).length ? series.metadata : sanitizedItem.metadata || {};
+    series.updatedAt = series.updatedAt || sanitizedItem.updatedAt || "";
     series.seasons.set(seasonNumber, season);
     seriesMap.set(seriesTitle, series);
   });
@@ -179,6 +191,10 @@ function groupTvSeries(tvItems) {
           episodes: season.episodes.sort((a, b) => (a.episodeNumber || 0) - (b.episodeNumber || 0)),
         }))
         .sort((a, b) => a.seasonNumber - b.seasonNumber),
+    }))
+    .map((series) => ({
+      ...series,
+      meta: `${series.seasons.length} ${series.seasons.length === 1 ? "season" : "seasons"}`,
     }))
     .sort((a, b) => a.seriesTitle.localeCompare(b.seriesTitle));
 }
@@ -408,6 +424,73 @@ function getClientHtml() {
         padding: 18px;
       }
 
+      .library-controls {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: grid;
+        gap: 10px;
+        margin: -4px -4px 0;
+        padding: 4px;
+        border-radius: 22px;
+        background: linear-gradient(rgba(18, 18, 42, 0.86), rgba(18, 18, 42, 0.62));
+        backdrop-filter: blur(18px);
+      }
+
+      .search-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .search-row input {
+        width: 100%;
+        min-height: 46px;
+        padding: 0 18px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(8, 8, 30, 0.62);
+        color: var(--text);
+        outline: none;
+      }
+
+      .back-button {
+        min-height: 40px;
+        padding: 8px 14px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .jump-bar, .season-tabs {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+      }
+
+      .jump-bar::-webkit-scrollbar, .season-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .jump-bar button, .season-tabs button {
+        flex: 0 0 auto;
+        min-width: 38px;
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+      }
+
+      .season-tabs button.active {
+        background: rgba(255, 255, 255, 0.92);
+        color: #11152a;
+      }
+
       .detail {
         grid-template-columns: minmax(128px, 210px) minmax(0, 1fr);
         align-items: stretch;
@@ -494,6 +577,10 @@ function getClientHtml() {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 14px;
+      }
+
+      .grid.compact {
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
       }
 
       .card {
@@ -639,6 +726,14 @@ function getClientHtml() {
       </section>
 
       <section class="panel" id="libraryPanel">
+        <div class="library-controls">
+          <div class="search-row">
+            <button type="button" class="back-button" id="tvBackButton" hidden>All shows</button>
+            <input id="librarySearch" type="search" autocomplete="off" placeholder="Search movies" />
+          </div>
+          <div class="jump-bar" id="jumpBar" aria-label="Quick jump"></div>
+          <div class="season-tabs" id="seasonTabs" aria-label="Seasons" hidden></div>
+        </div>
         <h2 id="sectionTitle">Movies</h2>
         <div class="grid" id="movieGrid"></div>
         <div class="series" id="seriesList" hidden></div>
@@ -649,8 +744,11 @@ function getClientHtml() {
       const state = {
         library: null,
         pin: localStorage.getItem("toneos.pin") || sessionStorage.getItem("toneos.pin") || "",
+        searchQuery: "",
         section: "movies",
         selectedItem: null,
+        selectedSeasonNumber: null,
+        selectedSeriesId: "",
         status: null,
       };
       const serverName = document.querySelector("#serverName");
@@ -674,6 +772,10 @@ function getClientHtml() {
       const sectionTitle = document.querySelector("#sectionTitle");
       const movieGrid = document.querySelector("#movieGrid");
       const seriesList = document.querySelector("#seriesList");
+      const librarySearch = document.querySelector("#librarySearch");
+      const jumpBar = document.querySelector("#jumpBar");
+      const seasonTabs = document.querySelector("#seasonTabs");
+      const tvBackButton = document.querySelector("#tvBackButton");
       const tabs = [...document.querySelectorAll(".tabs button")];
 
       function getHeaders() {
@@ -751,6 +853,78 @@ function getClientHtml() {
           : '<div class="poster">' + escapeHtml(item.initials || "M") + "</div>";
       }
 
+      function normalizeSearch(value) {
+        return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      }
+
+      function getJumpKey(title = "") {
+        const first = String(title || "").trim()[0] || "#";
+        return /[a-z]/i.test(first) ? first.toUpperCase() : "#";
+      }
+
+      function itemSearchText(item) {
+        return normalizeSearch([
+          item.title,
+          item.seriesTitle,
+          item.meta,
+          item.artist,
+          item.album,
+          item.metadata?.overview,
+        ].filter(Boolean).join(" "));
+      }
+
+      function matchesSearch(item) {
+        const query = normalizeSearch(state.searchQuery);
+        return !query || itemSearchText(item).includes(query);
+      }
+
+      function seriesSearchText(series) {
+        const episodeText = (series.seasons || [])
+          .flatMap((season) => season.episodes || [])
+          .map((episode) => [episode.title, episode.meta].join(" "))
+          .join(" ");
+        return normalizeSearch([series.seriesTitle, series.meta, series.metadata?.overview, episodeText].filter(Boolean).join(" "));
+      }
+
+      function matchesSeriesSearch(series) {
+        const query = normalizeSearch(state.searchQuery);
+        return !query || seriesSearchText(series).includes(query);
+      }
+
+      function renderJumpBar(items, getTitle) {
+        jumpBar.replaceChildren();
+        const keys = [...new Set(items.map((item) => getJumpKey(getTitle(item))))].sort((a, b) => {
+          if (a === "#") return 1;
+          if (b === "#") return -1;
+          return a.localeCompare(b);
+        });
+        jumpBar.hidden = keys.length < 2;
+
+        keys.forEach((key) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = key;
+          button.addEventListener("click", () => {
+            const target = document.querySelector('[data-jump-key="' + key + '"]');
+            target?.scrollIntoView({ behavior: "smooth", block: "center" });
+          });
+          jumpBar.append(button);
+        });
+      }
+
+      function updateSearchPlaceholder() {
+        if (state.section === "tv") {
+          librarySearch.placeholder = state.selectedSeriesId ? "Search episodes" : "Search TV shows";
+          return;
+        }
+
+        librarySearch.placeholder = state.section === "games" ? "Search games" : "Search movies";
+      }
+
+      function setCardJumpKey(card, title) {
+        card.dataset.jumpKey = getJumpKey(title);
+      }
+
       function getItemSummary(item) {
         return item.metadata?.overview ||
           item.summary ||
@@ -793,6 +967,7 @@ function getClientHtml() {
         detailMeta.textContent = item.meta || item.extension || "Direct play";
         detailSummary.textContent = getItemSummary(item);
         detailPlayButton.textContent = item.section === "games" ? "Play on host" : "Play";
+        detailPlayButton.disabled = false;
         detailPanel.hidden = false;
         detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -804,12 +979,15 @@ function getClientHtml() {
         playerPanel.hidden = false;
         playerTitle.textContent = getItemDisplayTitle(item);
         playerMeta.textContent = "Checking direct play...";
+        detailPlayButton.disabled = true;
+        detailPlayButton.textContent = "Opening...";
+        playerPanel.scrollIntoView({ behavior: "smooth", block: "center" });
 
         try {
           const response = await fetch(streamUrl, {
+            method: "HEAD",
             headers: {
               ...getHeaders(),
-              Range: "bytes=0-1",
             },
           });
 
@@ -834,6 +1012,9 @@ function getClientHtml() {
             error?.name === "NotAllowedError"
               ? "Tap the video play button to start playback."
               : error?.message || "ToneOS could not start this stream.";
+        } finally {
+          detailPlayButton.disabled = false;
+          detailPlayButton.textContent = "Play";
         }
       }
 
@@ -861,17 +1042,22 @@ function getClientHtml() {
       function renderMovies() {
         movieGrid.hidden = false;
         seriesList.hidden = true;
+        seasonTabs.hidden = true;
+        tvBackButton.hidden = true;
         sectionTitle.textContent = "Movies";
         movieGrid.replaceChildren();
-        const movies = state.library?.sections?.movies || [];
+        movieGrid.classList.add("compact");
+        const movies = (state.library?.sections?.movies || []).filter(matchesSearch);
+        renderJumpBar(movies, (item) => item.title);
         if (!movies.length) {
-          movieGrid.innerHTML = '<p class="muted">No movies have been scanned yet.</p>';
+          movieGrid.innerHTML = '<p class="muted">' + (state.searchQuery ? "No movies match that search." : "No movies have been scanned yet.") + "</p>";
           return;
         }
         movies.forEach((item) => {
           const card = document.createElement("button");
           card.type = "button";
           card.className = "card";
+          setCardJumpKey(card, item.title);
           card.innerHTML = poster(item) + "<strong>" + escapeHtml(item.title) + "</strong><span class='muted'>" + escapeHtml(item.meta || "Movie") + "</span>";
           card.addEventListener("click", () => showDetails(item));
           movieGrid.append(card);
@@ -879,50 +1065,124 @@ function getClientHtml() {
       }
 
       function renderTv() {
-        movieGrid.hidden = true;
-        seriesList.hidden = false;
-        sectionTitle.textContent = "TV Shows";
-        seriesList.replaceChildren();
         const seriesItems = state.library?.tvSeries || [];
-        if (!seriesItems.length) {
-          seriesList.innerHTML = '<p class="muted">No TV shows have been scanned yet.</p>';
+        const selectedSeries = seriesItems.find((series) => series.id === state.selectedSeriesId);
+
+        if (!selectedSeries) {
+          state.selectedSeriesId = "";
+          state.selectedSeasonNumber = null;
+          movieGrid.hidden = false;
+          seriesList.hidden = true;
+          seasonTabs.hidden = true;
+          tvBackButton.hidden = true;
+          sectionTitle.textContent = "TV Shows";
+          movieGrid.replaceChildren();
+          movieGrid.classList.add("compact");
+          const visibleSeries = seriesItems.filter(matchesSeriesSearch);
+          renderJumpBar(visibleSeries, (series) => series.seriesTitle);
+
+          if (!visibleSeries.length) {
+            movieGrid.innerHTML = '<p class="muted">' + (state.searchQuery ? "No TV shows match that search." : "No TV shows have been scanned yet.") + "</p>";
+            return;
+          }
+
+          visibleSeries.forEach((series) => {
+            const card = document.createElement("button");
+            card.type = "button";
+            card.className = "card";
+            setCardJumpKey(card, series.seriesTitle);
+            card.innerHTML = poster({
+              coverUrl: series.coverUrl || series.backdropUrl || series.headerUrl,
+              initials: series.initials,
+            }) + "<strong>" + escapeHtml(series.seriesTitle) + "</strong><span class='muted'>" + escapeHtml(series.meta || "Series") + "</span>";
+            card.addEventListener("click", () => {
+              state.selectedSeriesId = series.id;
+              state.selectedSeasonNumber = series.seasons?.[0]?.seasonNumber || 1;
+              state.searchQuery = "";
+              librarySearch.value = "";
+              render();
+            });
+            movieGrid.append(card);
+          });
           return;
         }
-        seriesItems.forEach((series) => {
-          const section = document.createElement("section");
-          section.className = "season";
-          section.innerHTML = "<h2>" + escapeHtml(series.seriesTitle) + "</h2>";
-          series.seasons.forEach((season) => {
-            const seasonTitle = document.createElement("p");
-            seasonTitle.className = "muted";
-            seasonTitle.textContent = "Season " + season.seasonNumber;
-            section.append(seasonTitle);
-            season.episodes.forEach((episode) => {
-              const row = document.createElement("div");
-              row.className = "episode";
-              row.innerHTML = "<div><strong>" + escapeHtml(episode.title) + "</strong><p class='muted'>" + escapeHtml(episode.meta || "Episode") + "</p></div><button type='button'>Details</button>";
-              row.querySelector("button").addEventListener("click", () => showDetails(episode));
-              row.addEventListener("click", () => showDetails(episode));
-              section.append(row);
-            });
+
+        movieGrid.hidden = true;
+        seriesList.hidden = false;
+        tvBackButton.hidden = false;
+        sectionTitle.textContent = selectedSeries.seriesTitle;
+        seriesList.replaceChildren();
+        jumpBar.hidden = true;
+        seasonTabs.hidden = false;
+        seasonTabs.replaceChildren();
+        const seasons = selectedSeries.seasons || [];
+        const selectedSeason = seasons.find((season) => season.seasonNumber === state.selectedSeasonNumber) || seasons[0];
+
+        if (selectedSeason && state.selectedSeasonNumber !== selectedSeason.seasonNumber) {
+          state.selectedSeasonNumber = selectedSeason.seasonNumber;
+        }
+
+        seasons.forEach((season) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = season.seasonNumber === state.selectedSeasonNumber ? "active" : "";
+          button.textContent = "Season " + season.seasonNumber;
+          button.addEventListener("click", () => {
+            state.selectedSeasonNumber = season.seasonNumber;
+            render();
           });
-          seriesList.append(section);
+          seasonTabs.append(button);
         });
+
+        if (!selectedSeason) {
+          seriesList.innerHTML = '<p class="muted">No seasons were found for this show.</p>';
+          return;
+        }
+
+        const episodes = (selectedSeason.episodes || []).filter(matchesSearch);
+        const section = document.createElement("section");
+        section.className = "season";
+        section.innerHTML = "<h2>Season " + escapeHtml(selectedSeason.seasonNumber) + "</h2>";
+
+        if (!episodes.length) {
+          section.innerHTML += '<p class="muted">No episodes match that search.</p>';
+          seriesList.append(section);
+          return;
+        }
+
+        episodes.forEach((episode) => {
+          const row = document.createElement("div");
+          row.className = "episode";
+          row.innerHTML = "<div><strong>" + escapeHtml(episode.title) + "</strong><p class='muted'>" + escapeHtml(episode.meta || "Episode") + "</p></div><button type='button'>Details</button>";
+          row.querySelector("button").addEventListener("click", (event) => {
+            event.stopPropagation();
+            showDetails(episode);
+          });
+          row.addEventListener("click", () => showDetails(episode));
+          section.append(row);
+        });
+
+        seriesList.append(section);
       }
 
       function renderGames() {
         movieGrid.hidden = false;
         seriesList.hidden = true;
+        seasonTabs.hidden = true;
+        tvBackButton.hidden = true;
         sectionTitle.textContent = "Games";
         movieGrid.replaceChildren();
-        const games = state.library?.sections?.games || [];
+        movieGrid.classList.add("compact");
+        const games = (state.library?.sections?.games || []).filter(matchesSearch);
+        renderJumpBar(games, (item) => item.title);
         if (!games.length) {
-          movieGrid.innerHTML = '<p class="muted">No games or emulator ROMs have been scanned yet.</p>';
+          movieGrid.innerHTML = '<p class="muted">' + (state.searchQuery ? "No games match that search." : "No games or emulator ROMs have been scanned yet.") + "</p>";
           return;
         }
         games.forEach((item) => {
           const card = document.createElement("div");
           card.className = "card game-launch";
+          setCardJumpKey(card, item.title);
           card.innerHTML = poster(item) + "<strong>" + escapeHtml(item.title) + "</strong><span class='muted'>" + escapeHtml(item.meta || "Host game") + "</span><button type='button'>Details</button>";
           card.querySelector("button").addEventListener("click", (event) => {
             event.stopPropagation();
@@ -935,6 +1195,7 @@ function getClientHtml() {
 
       function render() {
         tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.section === state.section));
+        updateSearchPlaceholder();
         if (state.section === "tv") {
           renderTv();
         } else if (state.section === "games") {
@@ -963,11 +1224,34 @@ function getClientHtml() {
 
       tabs.forEach((tab) => {
         tab.addEventListener("click", () => {
+          if (state.section !== tab.dataset.section) {
+            state.searchQuery = "";
+            librarySearch.value = "";
+          }
           state.section = tab.dataset.section;
+          if (state.section !== "tv") {
+            state.selectedSeriesId = "";
+            state.selectedSeasonNumber = null;
+          }
           detailPanel.hidden = true;
           state.selectedItem = null;
           render();
         });
+      });
+
+      librarySearch.addEventListener("input", () => {
+        state.searchQuery = librarySearch.value;
+        render();
+      });
+
+      tvBackButton.addEventListener("click", () => {
+        state.selectedSeriesId = "";
+        state.selectedSeasonNumber = null;
+        state.searchQuery = "";
+        librarySearch.value = "";
+        detailPanel.hidden = true;
+        state.selectedItem = null;
+        render();
       });
 
       detailPlayButton.addEventListener("click", () => {
@@ -1281,6 +1565,7 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, hand
         }
 
         const range = request.headers.range;
+        const isHeadRequest = request.method === "HEAD";
         const mimeType = VIDEO_MIME_TYPES[path.extname(item.path).toLowerCase()] || "application/octet-stream";
 
         if (!range) {
@@ -1289,6 +1574,10 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, hand
             "Content-Length": stats.size,
             "Content-Type": mimeType,
           });
+          if (isHeadRequest) {
+            response.end();
+            return;
+          }
           fs.createReadStream(item.path).pipe(response);
           return;
         }
@@ -1309,6 +1598,10 @@ function createMediaServer({ getLibraryPath, getSettingsPath, loadSettings, hand
           "Content-Range": `bytes ${start}-${end}/${stats.size}`,
           "Content-Type": mimeType,
         });
+        if (isHeadRequest) {
+          response.end();
+          return;
+        }
         fs.createReadStream(item.path, { end, start }).pipe(response);
       });
       return;
