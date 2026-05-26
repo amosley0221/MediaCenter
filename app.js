@@ -842,7 +842,9 @@ async function refreshLibraryMetadataFromSettings() {
 
     const updated = result?.summary?.updated ?? 0;
     const scanned = result?.summary?.scanned ?? 0;
-    setSettingsStatus(`Metadata refreshed. Updated ${updated} of ${scanned} library items.`);
+    const artwork = result?.summary?.artwork ?? 0;
+    const providers = result?.summary?.providers ?? 0;
+    setSettingsStatus(`Metadata refreshed. Updated ${updated} of ${scanned} items. ${artwork} have artwork; ${providers} have provider details.`);
   } catch {
     setSettingsStatus("Could not refresh metadata. Check your provider settings and connection.");
   } finally {

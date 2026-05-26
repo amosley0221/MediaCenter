@@ -203,8 +203,45 @@ function cleanMediaTitle(filePath) {
 function cleanProviderQuery(title = "") {
   return title
     .replace(/\b(19|20)\d{2}\b/g, " ")
+    .replace(/\b(extended|proper|repack|remux|theatrical|unrated|directors cut|director'?s cut)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function getProviderQueryCandidates(...titles) {
+  const candidates = [];
+
+  titles
+    .filter(Boolean)
+    .map((title) => cleanProviderQuery(title))
+    .filter((title) => title && title !== "." && title !== "..")
+    .forEach((title) => {
+      const normalized = title
+        .replace(/[._]+/g, " ")
+        .replace(/\s*-\s*/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      [title, normalized].forEach((candidate) => {
+        if (candidate && !candidates.includes(candidate)) {
+          candidates.push(candidate);
+        }
+      });
+
+      if (/^\d(?:\s+\d)+$/.test(normalized)) {
+        candidates.push(normalized.replace(/\s+/g, "-"));
+      }
+    });
+
+  return candidates;
+}
+
+async function runMetadataProvider(provider) {
+  try {
+    return await provider();
+  } catch {
+    return null;
+  }
 }
 
 async function fetchJson(url, headers = {}) {
@@ -335,12 +372,23 @@ async function getTmdbMetadata(item, mediaType, metadataSettings) {
     return null;
   }
 
-  const queryTitle = mediaType === "tv" ? item.seriesTitle || item.title : item.title;
-  const query = encodeURIComponent(cleanProviderQuery(queryTitle));
-  const data = await fetchJson(
-    `https://api.themoviedb.org/3/search/${mediaType}?api_key=${encodeURIComponent(apiKey)}&query=${query}&include_adult=false`,
-  );
-  const result = data?.results?.[0];
+  const queryTitles =
+    mediaType === "tv"
+      ? getProviderQueryCandidates(item.seriesTitle, path.basename(path.dirname(path.dirname(item.path || ""))), item.title)
+      : getProviderQueryCandidates(item.title, path.basename(path.dirname(item.path || "")));
+  let result = null;
+
+  for (const queryTitle of queryTitles) {
+    const query = encodeURIComponent(queryTitle);
+    const data = await fetchJson(
+      `https://api.themoviedb.org/3/search/${mediaType}?api_key=${encodeURIComponent(apiKey)}&query=${query}&include_adult=false`,
+    );
+    result = data?.results?.[0];
+
+    if (result) {
+      break;
+    }
+  }
 
   if (!result) {
     return null;
@@ -371,9 +419,18 @@ async function getItunesMovieMetadata(item, metadataSettings) {
     return null;
   }
 
-  const query = encodeURIComponent(cleanProviderQuery(item.title));
-  const data = await fetchJson(`https://itunes.apple.com/search?term=${query}&media=movie&entity=movie&limit=1`);
-  const result = data?.results?.[0];
+  const queries = getProviderQueryCandidates(item.title, path.basename(path.dirname(item.path || "")));
+  let result = null;
+
+  for (const queryTitle of queries) {
+    const query = encodeURIComponent(queryTitle);
+    const data = await fetchJson(`https://itunes.apple.com/search?term=${query}&media=movie&entity=movie&limit=1`);
+    result = data?.results?.[0];
+
+    if (result) {
+      break;
+    }
+  }
 
   if (!result) {
     return null;
@@ -403,8 +460,16 @@ async function getTvMazeMetadata(item, metadataSettings) {
     return null;
   }
 
-  const queryTitle = item.seriesTitle || item.title;
-  const data = await fetchJson(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(cleanProviderQuery(queryTitle))}`);
+  const queries = getProviderQueryCandidates(item.seriesTitle, path.basename(path.dirname(path.dirname(item.path || ""))), item.title);
+  let data = null;
+
+  for (const queryTitle of queries) {
+    data = await fetchJson(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(queryTitle)}`);
+
+    if (data) {
+      break;
+    }
+  }
 
   if (!data) {
     return null;
@@ -523,11 +588,17 @@ async function getMusicBrainzMetadata(item, metadataSettings) {
 async function getMetadataForItem(item, metadataSettings = {}) {
   try {
     if (item.section === "movies") {
-      return (await getTmdbMetadata(item, "movie", metadataSettings)) || (await getItunesMovieMetadata(item, metadataSettings));
+      return (
+        (await runMetadataProvider(() => getTmdbMetadata(item, "movie", metadataSettings))) ||
+        (await runMetadataProvider(() => getItunesMovieMetadata(item, metadataSettings)))
+      );
     }
 
     if (item.section === "tv") {
-      return (await getTmdbMetadata(item, "tv", metadataSettings)) || (await getTvMazeMetadata(item, metadataSettings));
+      return (
+        (await runMetadataProvider(() => getTmdbMetadata(item, "tv", metadataSettings))) ||
+        (await runMetadataProvider(() => getTvMazeMetadata(item, metadataSettings)))
+      );
     }
 
     if (item.section === "games") {
@@ -665,6 +736,8 @@ async function refreshLibraryMetadata(libraryPath, metadataSettings = {}) {
   const lookupCache = new Map();
   const nextSections = {};
   const summary = {
+    artwork: 0,
+    providers: 0,
     scanned: 0,
     updated: 0,
   };
@@ -677,6 +750,8 @@ async function refreshLibraryMetadata(libraryPath, metadataSettings = {}) {
     });
 
     summary.scanned += items.length;
+    summary.artwork += enrichedItems.filter(hasMetadataArtwork).length;
+    summary.providers += enrichedItems.filter(hasProviderMetadata).length;
     summary.updated += enrichedItems.filter((item, index) => didMetadataChange(items[index], item)).length;
     nextSections[section] = enrichedItems;
   }

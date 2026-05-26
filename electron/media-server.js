@@ -648,7 +648,7 @@ function getClientHtml() {
     <script>
       const state = {
         library: null,
-        pin: sessionStorage.getItem("toneos.pin") || "",
+        pin: localStorage.getItem("toneos.pin") || sessionStorage.getItem("toneos.pin") || "",
         section: "movies",
         selectedItem: null,
         status: null,
@@ -716,6 +716,25 @@ function getClientHtml() {
         return result;
       }
 
+      async function savePin(pin) {
+        const response = await fetch("/api/pin", {
+          body: JSON.stringify({ pin }),
+          headers: {
+            "Content-Type": "application/json",
+            "X-ToneOS-PIN": pin,
+          },
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          throw new Error("That PIN did not unlock this ToneOS server.");
+        }
+
+        state.pin = pin;
+        localStorage.setItem("toneos.pin", pin);
+        sessionStorage.setItem("toneos.pin", pin);
+      }
+
       function escapeHtml(value) {
         return String(value || "").replace(/[&<>"']/g, (character) => ({
           "&": "&amp;",
@@ -778,14 +797,44 @@ function getClientHtml() {
         detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
-      function playItem(item) {
+      async function playItem(item) {
         const pinQuery = state.pin ? "?pin=" + encodeURIComponent(state.pin) : "";
+        const streamUrl = "/stream/" + encodeURIComponent(item.id) + pinQuery;
         player.hidden = false;
-        player.src = "/stream/" + encodeURIComponent(item.id) + pinQuery;
         playerPanel.hidden = false;
         playerTitle.textContent = getItemDisplayTitle(item);
-        playerMeta.textContent = item.meta || item.extension || "Direct play";
-        player.play().catch(() => {});
+        playerMeta.textContent = "Checking direct play...";
+
+        try {
+          const response = await fetch(streamUrl, {
+            headers: {
+              ...getHeaders(),
+              Range: "bytes=0-1",
+            },
+          });
+
+          if (response.status === 401) {
+            pinPanel.hidden = false;
+            playerMeta.textContent = "Enter the server PIN once to unlock playback on this device.";
+            return;
+          }
+
+          if (!response.ok && response.status !== 206) {
+            const result = await response.clone().json().catch(async () => ({ message: await response.text().catch(() => "") }));
+            playerMeta.textContent = result.message || "ToneOS could not start this stream.";
+            return;
+          }
+
+          player.src = streamUrl;
+          player.load();
+          playerMeta.textContent = item.meta || item.extension || "Direct play";
+          await player.play();
+        } catch (error) {
+          playerMeta.textContent =
+            error?.name === "NotAllowedError"
+              ? "Tap the video play button to start playback."
+              : error?.message || "ToneOS could not start this stream.";
+        }
       }
 
       async function launchGame(item) {
@@ -939,10 +988,35 @@ function getClientHtml() {
         detailPanel.hidden = true;
       });
 
-      pinButton.addEventListener("click", () => {
-        state.pin = pinInput.value;
-        sessionStorage.setItem("toneos.pin", state.pin);
-        load();
+      player.addEventListener("error", () => {
+        const code = player.error?.code;
+        playerMeta.textContent =
+          code === 4
+            ? "This file is not supported for direct play on this Android device yet. MP4/H.264/AAC usually works; MKV, HEVC, DTS, or TrueHD may need FFmpeg transcoding."
+            : "Playback stopped because the stream could not be loaded.";
+      });
+
+      player.addEventListener("playing", () => {
+        if (state.selectedItem) {
+          playerMeta.textContent = state.selectedItem.meta || state.selectedItem.extension || "Direct play";
+        }
+      });
+
+      pinButton.addEventListener("click", async () => {
+        const pin = pinInput.value.trim();
+        pinButton.disabled = true;
+        pinButton.textContent = "Connecting...";
+
+        try {
+          await savePin(pin);
+          pinPanel.hidden = true;
+          await load();
+        } catch (error) {
+          serverStatus.textContent = error.message || "That PIN did not unlock this ToneOS server.";
+        } finally {
+          pinButton.disabled = false;
+          pinButton.textContent = "Connect";
+        }
       });
 
       pinInput.addEventListener("keydown", (event) => {
