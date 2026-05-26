@@ -86,7 +86,7 @@ const IGNORED_DIRECTORIES = new Set([
 const MAX_SCAN_DEPTH = 8;
 const MAX_SCAN_ITEMS = 5000;
 const MAX_METADATA_LOOKUPS = 24;
-const MAX_METADATA_REFRESH_LOOKUPS = 300;
+const MAX_METADATA_REFRESH_LOOKUPS = 1200;
 const MUSICBRAINZ_USER_AGENT = "MediaCenter/0.1.0 (personal desktop media library)";
 const LOCAL_ARTWORK_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const LOCAL_COVER_NAMES = ["poster", "cover", "folder", "movie", "front", "album"];
@@ -201,11 +201,34 @@ function cleanMediaTitle(filePath) {
 }
 
 function cleanProviderQuery(title = "") {
-  return title
-    .replace(/\b(19|20)\d{2}\b/g, " ")
-    .replace(/\b(extended|proper|repack|remux|theatrical|unrated|directors cut|director'?s cut)\b/gi, " ")
+  const normalizedTitle = String(title || "")
+    .replace(/[._]+/g, " ")
+    .replace(/\[[^\]]+\]/g, " ")
+    .replace(/\([^)]*(480p|720p|1080p|2160p|4k|8k|uhd|bluray|web-dl|webrip|x264|x265|hevc|hdr|dv)[^)]*\)/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+  const yearMatch = normalizedTitle.match(/\b(19|20)\d{2}\b/);
+  const titleBeforeTechnicalSuffix =
+    yearMatch && yearMatch.index > 0 ? normalizedTitle.slice(0, yearMatch.index) : normalizedTitle;
+
+  const cleaned = titleBeforeTechnicalSuffix
+    .replace(/\b(19|20)\d{2}\b/g, " ")
+    .replace(
+      /\b(480p|720p|1080p|2160p|4k|8k|aac|amzn|atmos|bluray|blu ray|ddp?|dts|dts-hd|dv|eac3|extended|h264|h265|hdr|hevc|hmax|internal|ma|nf|proper|repack|remaster(?:ed)?|remux|truehd|theatrical|uhd|unrated|web-dl|webdl|webrip|x264|x265|yify|yts|directors cut|director'?s cut)\b.*$/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned || normalizedTitle;
+}
+
+function getMovieQueryCandidates(item) {
+  return getProviderQueryCandidates(
+    item.title,
+    item.path ? path.basename(item.path, path.extname(item.path)) : "",
+    path.basename(path.dirname(item.path || "")),
+  );
 }
 
 function getProviderQueryCandidates(...titles) {
@@ -375,7 +398,7 @@ async function getTmdbMetadata(item, mediaType, metadataSettings) {
   const queryTitles =
     mediaType === "tv"
       ? getProviderQueryCandidates(item.seriesTitle, path.basename(path.dirname(path.dirname(item.path || ""))), item.title)
-      : getProviderQueryCandidates(item.title, path.basename(path.dirname(item.path || "")));
+      : getMovieQueryCandidates(item);
   let result = null;
 
   for (const queryTitle of queryTitles) {
@@ -419,7 +442,7 @@ async function getItunesMovieMetadata(item, metadataSettings) {
     return null;
   }
 
-  const queries = getProviderQueryCandidates(item.title, path.basename(path.dirname(item.path || "")));
+  const queries = getMovieQueryCandidates(item);
   let result = null;
 
   for (const queryTitle of queries) {
@@ -455,6 +478,51 @@ async function getItunesMovieMetadata(item, metadataSettings) {
   };
 }
 
+async function getImdbMovieMetadata(item, metadataSettings) {
+  if (metadataSettings.fallbackMetadataEnabled === false) {
+    return null;
+  }
+
+  const queries = getMovieQueryCandidates(item);
+  let result = null;
+
+  for (const queryTitle of queries) {
+    const slug = queryTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    if (!slug) {
+      continue;
+    }
+
+    const data = await fetchJson(`https://v3.sg.media-imdb.com/suggestion/${encodeURIComponent(slug[0])}/${encodeURIComponent(slug)}.json`);
+    result = data?.d?.find((entry) => entry?.i?.imageUrl && (entry.qid === "movie" || entry.q === "feature")) || data?.d?.find((entry) => entry?.i?.imageUrl);
+
+    if (result) {
+      break;
+    }
+  }
+
+  if (!result) {
+    return null;
+  }
+
+  const year = result.y ? String(result.y) : "";
+
+  return {
+    coverUrl: result.i?.imageUrl || "",
+    metadata: {
+      overview: result.s || "",
+      provider: "IMDb Suggestions",
+      providerId: result.id || "",
+      year,
+    },
+    meta: `${year || item.extension || "Movie"} | IMDb`,
+    title: result.l || item.title,
+  };
+}
+
 async function getTvMazeMetadata(item, metadataSettings) {
   if (metadataSettings.fallbackMetadataEnabled === false) {
     return null;
@@ -476,20 +544,33 @@ async function getTvMazeMetadata(item, metadataSettings) {
   }
 
   const year = String(data.premiered || "").slice(0, 4);
+  const episodeData =
+    item.seasonNumber && item.episodeNumber
+      ? await fetchJson(
+          `https://api.tvmaze.com/shows/${encodeURIComponent(data.id)}/episodebynumber?season=${encodeURIComponent(item.seasonNumber)}&number=${encodeURIComponent(item.episodeNumber)}`,
+        )
+      : null;
+  const episodeImage = episodeData?.image?.original || episodeData?.image?.medium || "";
+  const seriesImage = data.image?.original || data.image?.medium || "";
 
   return {
-    coverUrl: data.image?.original || data.image?.medium || "",
+    backdropUrl: episodeImage || item.backdropUrl || "",
+    coverUrl: episodeImage || item.coverUrl || "",
     metadata: {
+      episodeName: episodeData?.name || "",
       genres: Array.isArray(data.genres) ? data.genres : [],
       network: data.network?.name || data.webChannel?.name || "",
-      overview: stripHtml(data.summary || ""),
-      provider: "TVmaze",
-      providerId: data.id || "",
+      overview: stripHtml(episodeData?.summary || data.summary || ""),
+      provider: episodeData ? "TVmaze Episode" : "TVmaze",
+      providerId: episodeData?.id || data.id || "",
       rating: data.rating?.average || null,
+      seriesCoverUrl: seriesImage,
+      seriesOverview: stripHtml(data.summary || ""),
+      seriesProviderId: data.id || "",
       year,
     },
     meta: `${item.meta || "TV"}${year ? ` | ${year}` : ""}`,
-    title: item.title,
+    title: episodeData?.name || item.title,
   };
 }
 
@@ -590,14 +671,15 @@ async function getMetadataForItem(item, metadataSettings = {}) {
     if (item.section === "movies") {
       return (
         (await runMetadataProvider(() => getTmdbMetadata(item, "movie", metadataSettings))) ||
-        (await runMetadataProvider(() => getItunesMovieMetadata(item, metadataSettings)))
+        (await runMetadataProvider(() => getItunesMovieMetadata(item, metadataSettings))) ||
+        (await runMetadataProvider(() => getImdbMovieMetadata(item, metadataSettings)))
       );
     }
 
     if (item.section === "tv") {
       return (
-        (await runMetadataProvider(() => getTmdbMetadata(item, "tv", metadataSettings))) ||
-        (await runMetadataProvider(() => getTvMazeMetadata(item, metadataSettings)))
+        (await runMetadataProvider(() => getTvMazeMetadata(item, metadataSettings))) ||
+        (await runMetadataProvider(() => getTmdbMetadata(item, "tv", metadataSettings)))
       );
     }
 
@@ -650,6 +732,10 @@ function getMetadataLookupTitle(item) {
 }
 
 function getMetadataCacheKey(item) {
+  if (item.section === "tv") {
+    return `${item.section}:${cleanProviderQuery(item.seriesTitle || item.title).toLowerCase()}:s${item.seasonNumber || 1}:e${item.episodeNumber || 1}`;
+  }
+
   return `${item.section}:${cleanProviderQuery(getMetadataLookupTitle(item)).toLowerCase()}`;
 }
 

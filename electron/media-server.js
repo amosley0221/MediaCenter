@@ -173,8 +173,8 @@ function groupTvSeries(tvItems) {
     const sanitizedItem = sanitizeItem(item);
 
     season.episodes.push(sanitizedItem);
-    series.backdropUrl = series.backdropUrl || sanitizedItem.backdropUrl || "";
-    series.coverUrl = series.coverUrl || sanitizedItem.coverUrl || "";
+    series.backdropUrl = series.backdropUrl || sanitizedItem.metadata?.seriesCoverUrl || sanitizedItem.backdropUrl || "";
+    series.coverUrl = series.coverUrl || sanitizedItem.metadata?.seriesCoverUrl || sanitizedItem.coverUrl || "";
     series.headerUrl = series.headerUrl || sanitizedItem.headerUrl || "";
     series.metadata = Object.keys(series.metadata || {}).length ? series.metadata : sanitizedItem.metadata || {};
     series.updatedAt = series.updatedAt || sanitizedItem.updatedAt || "";
@@ -344,6 +344,7 @@ function getClientHtml() {
       * { box-sizing: border-box; }
 
       body {
+        overflow-y: auto;
         min-height: 100vh;
         margin: 0;
         background:
@@ -362,6 +363,8 @@ function getClientHtml() {
       .shell {
         display: grid;
         gap: 18px;
+        align-content: start;
+        min-height: 100vh;
         width: min(1180px, calc(100vw - 28px));
         margin: 0 auto;
         padding: 22px 0 42px;
@@ -633,12 +636,54 @@ function getClientHtml() {
       .episode {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 10px;
         padding: 10px 12px;
         border: 1px solid var(--line);
         border-radius: 16px;
         background: rgba(255, 255, 255, 0.06);
+      }
+
+      .episode-main {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        min-width: 0;
+        gap: 12px;
+      }
+
+      .episode-thumb {
+        display: grid;
+        flex: 0 0 94px;
+        width: 94px;
+        aspect-ratio: 16 / 9;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #55c8ff, #6957ff 55%, #16133a);
+        background-position: center;
+        background-size: cover;
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .episode-thumb.has-cover span {
+        display: none;
+      }
+
+      .series-hero {
+        display: grid;
+        grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+        gap: 18px;
+        align-items: center;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .series-hero .poster {
+        width: min(100%, 180px);
       }
 
       .game-launch {
@@ -673,6 +718,7 @@ function getClientHtml() {
       @media (max-width: 680px) {
         .topbar { align-items: start; flex-direction: column; }
         .detail { grid-template-columns: 1fr; }
+        .series-hero { grid-template-columns: 1fr; }
         .detail-poster {
           min-height: 210px;
           aspect-ratio: 16 / 9;
@@ -769,6 +815,7 @@ function getClientHtml() {
       const player = document.querySelector("#player");
       const playerTitle = document.querySelector("#playerTitle");
       const playerMeta = document.querySelector("#playerMeta");
+      const libraryPanel = document.querySelector("#libraryPanel");
       const sectionTitle = document.querySelector("#sectionTitle");
       const movieGrid = document.querySelector("#movieGrid");
       const seriesList = document.querySelector("#seriesList");
@@ -851,6 +898,15 @@ function getClientHtml() {
         return item.coverUrl
           ? '<div class="poster"><img src="' + escapeHtml(item.coverUrl) + '" alt="" loading="lazy" /></div>'
           : '<div class="poster">' + escapeHtml(item.initials || "M") + "</div>";
+      }
+
+      function thumb(item) {
+        const artworkUrl = item.backdropUrl || item.coverUrl || item.headerUrl || "";
+        const initials = escapeHtml(item.initials || getJumpKey(item.title || item.seriesTitle || "M"));
+
+        return artworkUrl
+          ? '<div class="episode-thumb has-cover" style="background-image: linear-gradient(transparent, rgba(7, 8, 26, 0.62)), url(&quot;' + escapeHtml(artworkUrl).replace(/"/g, "%22") + '&quot;)"><span>' + initials + "</span></div>"
+          : '<div class="episode-thumb"><span>' + initials + "</span></div>";
       }
 
       function normalizeSearch(value) {
@@ -954,6 +1010,7 @@ function getClientHtml() {
         state.selectedItem = item;
         detailPoster.className = "detail-poster";
         detailPoster.style.backgroundImage = "";
+        playerPanel.hidden = true;
 
         const artworkUrl = item.backdropUrl || item.coverUrl || item.headerUrl || "";
         if (artworkUrl) {
@@ -969,49 +1026,54 @@ function getClientHtml() {
         detailPlayButton.textContent = item.section === "games" ? "Play on host" : "Play";
         detailPlayButton.disabled = false;
         detailPanel.hidden = false;
+        libraryPanel.hidden = true;
         detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       async function playItem(item) {
         const pinQuery = state.pin ? "?pin=" + encodeURIComponent(state.pin) : "";
         const streamUrl = "/stream/" + encodeURIComponent(item.id) + pinQuery;
+
+        if (state.status?.pinRequired && !state.pin) {
+          pinPanel.hidden = false;
+          playerMeta.textContent = "Enter the server PIN once to unlock playback on this device.";
+          return;
+        }
+
         player.hidden = false;
         playerPanel.hidden = false;
         playerTitle.textContent = getItemDisplayTitle(item);
-        playerMeta.textContent = "Checking direct play...";
+        playerMeta.textContent = "Opening direct play...";
         detailPlayButton.disabled = true;
         detailPlayButton.textContent = "Opening...";
+        player.src = streamUrl;
+        player.load();
         playerPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+        fetch(streamUrl, { method: "HEAD", headers: getHeaders() })
+          .then(async (response) => {
+            if (response.status === 401) {
+              pinPanel.hidden = false;
+              playerMeta.textContent = "Enter the server PIN once to unlock playback on this device.";
+              return;
+            }
+
+            if (!response.ok && response.status !== 206) {
+              const result = await response.clone().json().catch(async () => ({ message: await response.text().catch(() => "") }));
+              playerMeta.textContent = result.message || "ToneOS could not start this stream.";
+            }
+          })
+          .catch(() => {});
 
         try {
-          const response = await fetch(streamUrl, {
-            method: "HEAD",
-            headers: {
-              ...getHeaders(),
-            },
-          });
-
-          if (response.status === 401) {
-            pinPanel.hidden = false;
-            playerMeta.textContent = "Enter the server PIN once to unlock playback on this device.";
-            return;
-          }
-
-          if (!response.ok && response.status !== 206) {
-            const result = await response.clone().json().catch(async () => ({ message: await response.text().catch(() => "") }));
-            playerMeta.textContent = result.message || "ToneOS could not start this stream.";
-            return;
-          }
-
-          player.src = streamUrl;
-          player.load();
-          playerMeta.textContent = item.meta || item.extension || "Direct play";
           await player.play();
+          playerMeta.textContent = item.meta || item.extension || "Direct play";
         } catch (error) {
           playerMeta.textContent =
             error?.name === "NotAllowedError"
               ? "Tap the video play button to start playback."
-              : error?.message || "ToneOS could not start this stream.";
+              : error?.name === "NotSupportedError"
+                ? "This file is not supported for direct play on this Android device yet. MP4/H.264/AAC usually works; MKV, HEVC, DTS, or TrueHD may need FFmpeg transcoding."
+                : error?.message || "ToneOS could not start this stream.";
         } finally {
           detailPlayButton.disabled = false;
           detailPlayButton.textContent = "Play";
@@ -1122,6 +1184,14 @@ function getClientHtml() {
           state.selectedSeasonNumber = selectedSeason.seasonNumber;
         }
 
+        const hero = document.createElement("section");
+        hero.className = "series-hero";
+        hero.innerHTML = poster({
+          coverUrl: selectedSeries.coverUrl || selectedSeries.backdropUrl || selectedSeries.headerUrl,
+          initials: selectedSeries.initials,
+        }) + '<div><p class="muted">TV Shows</p><h2>' + escapeHtml(selectedSeries.seriesTitle) + '</h2><p class="muted">' + escapeHtml(selectedSeries.meta || "Series") + '</p><p class="muted">' + escapeHtml(selectedSeries.metadata?.seriesOverview || selectedSeries.metadata?.overview || "Select a season, then pick an episode.") + "</p></div>";
+        seriesList.append(hero);
+
         seasons.forEach((season) => {
           const button = document.createElement("button");
           button.type = "button";
@@ -1153,7 +1223,7 @@ function getClientHtml() {
         episodes.forEach((episode) => {
           const row = document.createElement("div");
           row.className = "episode";
-          row.innerHTML = "<div><strong>" + escapeHtml(episode.title) + "</strong><p class='muted'>" + escapeHtml(episode.meta || "Episode") + "</p></div><button type='button'>Details</button>";
+          row.innerHTML = '<div class="episode-main">' + thumb(episode) + "<div><strong>" + escapeHtml(episode.title) + "</strong><p class='muted'>" + escapeHtml(episode.meta || "Episode") + "</p></div></div><button type='button'>Details</button>";
           row.querySelector("button").addEventListener("click", (event) => {
             event.stopPropagation();
             showDetails(episode);
@@ -1234,6 +1304,7 @@ function getClientHtml() {
             state.selectedSeasonNumber = null;
           }
           detailPanel.hidden = true;
+          libraryPanel.hidden = false;
           state.selectedItem = null;
           render();
         });
@@ -1241,6 +1312,8 @@ function getClientHtml() {
 
       librarySearch.addEventListener("input", () => {
         state.searchQuery = librarySearch.value;
+        detailPanel.hidden = true;
+        libraryPanel.hidden = false;
         render();
       });
 
@@ -1250,6 +1323,7 @@ function getClientHtml() {
         state.searchQuery = "";
         librarySearch.value = "";
         detailPanel.hidden = true;
+        libraryPanel.hidden = false;
         state.selectedItem = null;
         render();
       });
@@ -1270,6 +1344,7 @@ function getClientHtml() {
       detailCloseButton.addEventListener("click", () => {
         state.selectedItem = null;
         detailPanel.hidden = true;
+        libraryPanel.hidden = false;
       });
 
       player.addEventListener("error", () => {
