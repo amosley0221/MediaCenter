@@ -2259,6 +2259,97 @@ svg {
   color: #fff;
 }
 
+.media-detail-panel {
+  display: grid;
+  grid-template-columns: minmax(142px, 210px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: clamp(16px, 2vw, 28px);
+  padding: clamp(16px, 2.2vw, 26px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(8, 8, 30, 0.78), rgba(8, 8, 30, 0.28)),
+    radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.1), transparent 36%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.media-detail-artwork {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background-position: center;
+  background-size: cover;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 14px 28px rgba(0, 0, 0, 0.28);
+}
+
+.media-detail-artwork span {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.74);
+  border-radius: 50%;
+  background: rgba(8, 8, 30, 0.24);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 650;
+}
+
+.media-detail-artwork.has-cover span {
+  display: none;
+}
+
+.media-detail-panel > div:last-child {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+
+.media-detail-panel h2 {
+  margin: 0;
+  max-width: 980px;
+  font-size: clamp(34px, 5vw, 72px);
+  letter-spacing: 0;
+  line-height: 0.98;
+}
+
+.media-detail-panel p {
+  max-width: 980px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(14px, 1.4vw, 18px);
+  line-height: 1.45;
+}
+
+.media-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.media-detail-actions button {
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #11152a;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.media-detail-actions button + button {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+
 .media-row {
   display: grid;
   grid-auto-columns: 124px;
@@ -3652,6 +3743,15 @@ svg {
 
   .app-content.media-center {
     padding: 28px 20px;
+  }
+
+  .media-detail-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .media-detail-artwork {
+    min-height: 220px;
+    aspect-ratio: 16 / 9;
   }
 
   .app-content.settings-app {

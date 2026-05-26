@@ -91,10 +91,12 @@ function sanitizeItem(item) {
     addedAt: item.addedAt || "",
     backdropUrl: item.backdropUrl || "",
     coverUrl: item.coverUrl || "",
+    description: item.description || "",
     emulatorPlatform: item.emulatorPlatform || "",
     episodeNumber: item.episodeNumber || null,
     extension: item.extension || "",
     fileSize: item.fileSize || 0,
+    headerUrl: item.headerUrl || "",
     id: getPublicId(item),
     initials: getInitials(item.title || item.seriesTitle),
     meta: item.meta || "",
@@ -103,6 +105,7 @@ function sanitizeItem(item) {
     section: item.section,
     seriesTitle: item.seriesTitle || "",
     source: item.source || "",
+    summary: item.summary || "",
     title: item.title || "Untitled",
     updatedAt: item.updatedAt || item.addedAt || "",
   };
@@ -380,6 +383,75 @@ function getClientHtml() {
         padding: 18px;
       }
 
+      .detail {
+        grid-template-columns: minmax(128px, 210px) minmax(0, 1fr);
+        align-items: stretch;
+      }
+
+      .detail-poster {
+        display: grid;
+        min-height: 260px;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #55c8ff, #6957ff 55%, #16133a);
+        background-position: center;
+        background-size: cover;
+        box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
+      }
+
+      .detail-poster span {
+        display: grid;
+        width: 70px;
+        height: 70px;
+        place-items: center;
+        border: 2px solid rgba(255, 255, 255, 0.72);
+        border-radius: 50%;
+        background: rgba(8, 8, 30, 0.24);
+        color: #fff;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .detail-poster.has-cover span {
+        display: none;
+      }
+
+      .detail-copy {
+        display: grid;
+        align-content: center;
+        gap: 10px;
+      }
+
+      .detail-copy h2 {
+        font-size: clamp(32px, 7vw, 76px);
+        letter-spacing: 0;
+        line-height: 0.95;
+      }
+
+      .detail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .detail-actions button {
+        min-height: 42px;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #11152a;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .detail-actions button + button {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+      }
+
       .player {
         display: grid;
         gap: 12px;
@@ -488,6 +560,11 @@ function getClientHtml() {
 
       @media (max-width: 680px) {
         .topbar { align-items: start; flex-direction: column; }
+        .detail { grid-template-columns: 1fr; }
+        .detail-poster {
+          min-height: 210px;
+          aspect-ratio: 16 / 9;
+        }
         .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
     </style>
@@ -514,6 +591,20 @@ function getClientHtml() {
         <button type="button" id="pinButton">Connect</button>
       </section>
 
+      <section class="panel detail" id="detailPanel" hidden>
+        <div class="detail-poster" id="detailPoster"><span id="detailInitials">MC</span></div>
+        <div class="detail-copy">
+          <p class="muted" id="detailKicker">MediaCenter</p>
+          <h2 id="detailTitle">Select media</h2>
+          <p class="muted" id="detailMeta"></p>
+          <p class="muted" id="detailSummary"></p>
+          <div class="detail-actions">
+            <button type="button" id="detailPlayButton">Play</button>
+            <button type="button" id="detailCloseButton">Back</button>
+          </div>
+        </div>
+      </section>
+
       <section class="panel player" id="playerPanel" hidden>
         <video id="player" controls playsinline></video>
         <div>
@@ -534,6 +625,7 @@ function getClientHtml() {
         library: null,
         pin: sessionStorage.getItem("toneos.pin") || "",
         section: "movies",
+        selectedItem: null,
         status: null,
       };
       const serverName = document.querySelector("#serverName");
@@ -541,6 +633,15 @@ function getClientHtml() {
       const pinPanel = document.querySelector("#pinPanel");
       const pinInput = document.querySelector("#pinInput");
       const pinButton = document.querySelector("#pinButton");
+      const detailPanel = document.querySelector("#detailPanel");
+      const detailPoster = document.querySelector("#detailPoster");
+      const detailInitials = document.querySelector("#detailInitials");
+      const detailKicker = document.querySelector("#detailKicker");
+      const detailTitle = document.querySelector("#detailTitle");
+      const detailMeta = document.querySelector("#detailMeta");
+      const detailSummary = document.querySelector("#detailSummary");
+      const detailPlayButton = document.querySelector("#detailPlayButton");
+      const detailCloseButton = document.querySelector("#detailCloseButton");
       const playerPanel = document.querySelector("#playerPanel");
       const player = document.querySelector("#player");
       const playerTitle = document.querySelector("#playerTitle");
@@ -606,12 +707,58 @@ function getClientHtml() {
           : '<div class="poster">' + escapeHtml(item.initials || "M") + "</div>";
       }
 
+      function getItemSummary(item) {
+        return item.metadata?.overview ||
+          item.summary ||
+          item.description ||
+          (item.section === "games"
+            ? "Launch this game on the ToneOS host. Use Moonlight with Sunshine for low-latency remote play."
+            : "No summary has been added yet. Refresh metadata in ToneOS to fill in descriptions and cover details.");
+      }
+
+      function getItemDisplayTitle(item) {
+        return item.seriesTitle && item.episodeNumber ? item.seriesTitle + ": " + item.title : item.title;
+      }
+
+      function getDetailKicker(item) {
+        if (item.section === "tv") {
+          return item.seriesTitle || "TV Shows";
+        }
+
+        if (item.section === "games") {
+          return "Games";
+        }
+
+        return item.section === "movies" ? "Movies" : "MediaCenter";
+      }
+
+      function showDetails(item) {
+        state.selectedItem = item;
+        detailPoster.className = "detail-poster";
+        detailPoster.style.backgroundImage = "";
+
+        const artworkUrl = item.backdropUrl || item.coverUrl || item.headerUrl || "";
+        if (artworkUrl) {
+          detailPoster.classList.add("has-cover");
+          detailPoster.style.backgroundImage = 'linear-gradient(90deg, rgba(7, 8, 26, 0.2), rgba(7, 8, 26, 0.78)), url("' + String(artworkUrl).replace(/"/g, "%22") + '")';
+        }
+
+        detailInitials.textContent = item.initials || "M";
+        detailKicker.textContent = getDetailKicker(item);
+        detailTitle.textContent = getItemDisplayTitle(item);
+        detailMeta.textContent = item.meta || item.extension || "Direct play";
+        detailSummary.textContent = getItemSummary(item);
+        detailPlayButton.textContent = item.section === "games" ? "Play on host" : "Play";
+        detailPanel.hidden = false;
+        detailPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
       function playItem(item) {
         const pinQuery = state.pin ? "?pin=" + encodeURIComponent(state.pin) : "";
         player.hidden = false;
         player.src = "/stream/" + encodeURIComponent(item.id) + pinQuery;
         playerPanel.hidden = false;
-        playerTitle.textContent = item.seriesTitle ? item.seriesTitle + " - " + item.title : item.title;
+        playerTitle.textContent = getItemDisplayTitle(item);
         playerMeta.textContent = item.meta || item.extension || "Direct play";
         player.play().catch(() => {});
       }
@@ -652,7 +799,7 @@ function getClientHtml() {
           card.type = "button";
           card.className = "card";
           card.innerHTML = poster(item) + "<strong>" + escapeHtml(item.title) + "</strong><span class='muted'>" + escapeHtml(item.meta || "Movie") + "</span>";
-          card.addEventListener("click", () => playItem(item));
+          card.addEventListener("click", () => showDetails(item));
           movieGrid.append(card);
         });
       }
@@ -679,8 +826,9 @@ function getClientHtml() {
             season.episodes.forEach((episode) => {
               const row = document.createElement("div");
               row.className = "episode";
-              row.innerHTML = "<div><strong>" + escapeHtml(episode.title) + "</strong><p class='muted'>" + escapeHtml(episode.meta || "Episode") + "</p></div><button type='button'>Play</button>";
-              row.querySelector("button").addEventListener("click", () => playItem(episode));
+              row.innerHTML = "<div><strong>" + escapeHtml(episode.title) + "</strong><p class='muted'>" + escapeHtml(episode.meta || "Episode") + "</p></div><button type='button'>Details</button>";
+              row.querySelector("button").addEventListener("click", () => showDetails(episode));
+              row.addEventListener("click", () => showDetails(episode));
               section.append(row);
             });
           });
@@ -701,11 +849,12 @@ function getClientHtml() {
         games.forEach((item) => {
           const card = document.createElement("div");
           card.className = "card game-launch";
-          card.innerHTML = poster(item) + "<strong>" + escapeHtml(item.title) + "</strong><span class='muted'>" + escapeHtml(item.meta || "Host game") + "</span><button type='button'>Play on host</button>";
+          card.innerHTML = poster(item) + "<strong>" + escapeHtml(item.title) + "</strong><span class='muted'>" + escapeHtml(item.meta || "Host game") + "</span><button type='button'>Details</button>";
           card.querySelector("button").addEventListener("click", (event) => {
             event.stopPropagation();
-            launchGame(item);
+            showDetails(item);
           });
+          card.addEventListener("click", () => showDetails(item));
           movieGrid.append(card);
         });
       }
@@ -741,8 +890,28 @@ function getClientHtml() {
       tabs.forEach((tab) => {
         tab.addEventListener("click", () => {
           state.section = tab.dataset.section;
+          detailPanel.hidden = true;
+          state.selectedItem = null;
           render();
         });
+      });
+
+      detailPlayButton.addEventListener("click", () => {
+        if (!state.selectedItem) {
+          return;
+        }
+
+        if (state.selectedItem.section === "games") {
+          launchGame(state.selectedItem);
+          return;
+        }
+
+        playItem(state.selectedItem);
+      });
+
+      detailCloseButton.addEventListener("click", () => {
+        state.selectedItem = null;
+        detailPanel.hidden = true;
       });
 
       pinButton.addEventListener("click", () => {

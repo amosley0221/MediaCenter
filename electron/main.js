@@ -248,8 +248,8 @@ ipcMain.handle("media:open-item", async (_event, item = {}) => {
     return { ok: true };
   }
 
-  if (item.path) {
-    const error = await shell.openPath(item.path);
+  if (item.launchPath || item.path) {
+    const error = await shell.openPath(item.launchPath || item.path);
     return { ok: !error, error };
   }
 

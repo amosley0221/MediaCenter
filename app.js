@@ -36,6 +36,7 @@ const mediaTabs = [...document.querySelectorAll(".media-tab")];
 const mediaHeroPrimaryButton = mediaHero.querySelector(".hero-actions button:first-child");
 const livePlayer = document.querySelector("#livePlayer");
 const livePlayerVideo = document.querySelector("#livePlayerVideo");
+const livePlayerKicker = document.querySelector("#livePlayerKicker");
 const livePlayerTitle = document.querySelector("#livePlayerTitle");
 const livePlayerMeta = document.querySelector("#livePlayerMeta");
 const closeLivePlayer = document.querySelector("#closeLivePlayer");
@@ -510,6 +511,7 @@ let mediaSources = getInitialMediaSources();
 let desktopLibrary = null;
 let streamingProviderData = null;
 let liveTvData = null;
+let selectedMediaDetail = null;
 let appSettings = mergeAppSettings();
 let browserHomeUrl = loadBrowserHome();
 let browserStartupMode = loadBrowserStartupMode();
@@ -2025,7 +2027,7 @@ function hideProcessWindow(processWindow) {
   }
 
   if (processWindow === appWindow) {
-    closeLiveTvPlayer();
+    closeMediaPlayer();
   }
 
   resetWindowGeometry(processWindow);
@@ -2523,7 +2525,7 @@ async function openDesktopMediaItem(item) {
   return Boolean(result?.ok);
 }
 
-function closeLiveTvPlayer() {
+function closeMediaPlayer() {
   if (!livePlayer || !livePlayerVideo) {
     return;
   }
@@ -2534,16 +2536,192 @@ function closeLiveTvPlayer() {
   livePlayer.hidden = true;
 }
 
-function openLiveTvPlayer(item, src) {
+function openMediaPlayer(item, src, kicker = "MediaCenter") {
   if (!livePlayer || !livePlayerVideo || !src) {
     return;
   }
 
+  livePlayerKicker.textContent = kicker;
   livePlayerTitle.textContent = item.title || item.channelName || "Live TV";
   livePlayerMeta.textContent = item.meta || item.channelName || "Direct play";
   livePlayerVideo.src = src;
   livePlayer.hidden = false;
   livePlayerVideo.play().catch(() => {});
+}
+
+function openLiveTvPlayer(item, src) {
+  openMediaPlayer(item, src, "Live TV");
+}
+
+function encodeFileUrlPath(filePath) {
+  return String(filePath)
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((part, index) => {
+      if (index === 0 && /^[a-z]:$/i.test(part)) {
+        return part;
+      }
+
+      return encodeURIComponent(part);
+    })
+    .join("/");
+}
+
+function getLocalMediaUrl(item = {}) {
+  if (!item.path) {
+    return "";
+  }
+
+  const normalizedPath = String(item.path).replace(/\\/g, "/");
+  const prefix = normalizedPath.startsWith("/") ? "file://" : "file:///";
+
+  return `${prefix}${encodeFileUrlPath(normalizedPath)}`;
+}
+
+function getMediaSummary(item = {}) {
+  return (
+    item.metadata?.overview ||
+    item.summary ||
+    item.description ||
+    item.detail ||
+    (item.section === "games"
+      ? "Launch this game from the ToneOS host. Remote gameplay can use Moonlight with Sunshine when configured."
+      : "No summary has been added yet. Refresh metadata or add provider keys to fill in details, artwork, ratings, and descriptions.")
+  );
+}
+
+function getMediaDetailActionLabel(item = {}) {
+  if (item.brand || item.target) {
+    return "Open";
+  }
+
+  if (item.section === "games" || item.launchUrl || item.launchPath) {
+    return "Play on host";
+  }
+
+  if (item.section === "books") {
+    return "Open";
+  }
+
+  if (item.section === "music") {
+    return "Play";
+  }
+
+  return "Play";
+}
+
+function getMediaDetailArtwork(item = {}, section = "movies") {
+  if (item.backdropUrl) {
+    return item.backdropUrl;
+  }
+
+  if (item.coverUrl) {
+    return item.coverUrl;
+  }
+
+  if (item.headerUrl) {
+    return item.headerUrl;
+  }
+
+  return "";
+}
+
+function createMediaDetailPanel(item, section) {
+  const panel = document.createElement("section");
+  const artwork = document.createElement("div");
+  const initials = document.createElement("span");
+  const copy = document.createElement("div");
+  const kicker = document.createElement("p");
+  const title = document.createElement("h2");
+  const meta = document.createElement("p");
+  const summary = document.createElement("p");
+  const actions = document.createElement("div");
+  const playButton = document.createElement("button");
+  const closeButton = document.createElement("button");
+  const visualSection = item.section || section;
+  const artworkUrl = getMediaDetailArtwork(item, section);
+
+  panel.className = "media-detail-panel";
+  artwork.className = `media-detail-artwork poster-${visualSection}`;
+
+  if (artworkUrl) {
+    artwork.classList.add("has-cover");
+    artwork.style.backgroundImage = `linear-gradient(90deg, rgba(7, 8, 26, 0.28), rgba(7, 8, 26, 0.78)), url("${String(artworkUrl).replace(/"/g, "%22")}")`;
+  }
+
+  initials.textContent = String(item.title || "Media")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("");
+  kicker.className = "app-kicker";
+  kicker.textContent = visualSection === "tv" ? item.seriesTitle || "TV Shows" : mediaCatalog[visualSection]?.title || "MediaCenter";
+  title.textContent = item.seriesTitle && item.episodeNumber ? `${item.seriesTitle}: ${item.title}` : item.title || "Media";
+  meta.textContent = item.meta || item.extension || "Media";
+  summary.textContent = getMediaSummary(item);
+  actions.className = "media-detail-actions";
+  playButton.type = "button";
+  playButton.textContent = getMediaDetailActionLabel(item);
+  closeButton.type = "button";
+  closeButton.textContent = "Back";
+
+  playButton.addEventListener("click", () => playSelectedMediaDetail());
+  closeButton.addEventListener("click", () => {
+    selectedMediaDetail = null;
+    renderMediaCenter(currentMediaSection);
+  });
+
+  artwork.append(initials);
+  actions.append(playButton, closeButton);
+  copy.append(kicker, title, meta, summary, actions);
+  panel.append(artwork, copy);
+
+  return panel;
+}
+
+function showMediaDetail(item, section) {
+  if (item.section && item.section !== section && !item.path && !item.launchUrl && !item.launchPath) {
+    openMediaCenter(item.section);
+    return;
+  }
+
+  selectedMediaDetail = {
+    item,
+    section,
+  };
+  renderMediaCenter(currentMediaSection);
+}
+
+async function playSelectedMediaDetail() {
+  const item = selectedMediaDetail?.item;
+
+  if (!item) {
+    return;
+  }
+
+  const section = item.section || selectedMediaDetail.section;
+
+  if (section === "live" || item.source === LIVE_TV_SOURCE) {
+    openLiveTvItem(item);
+    return;
+  }
+
+  const streamingTarget = getStreamingItemTarget(item);
+
+  if (streamingTarget) {
+    openBrowser(streamingTarget);
+    return;
+  }
+
+  if ((section === "movies" || section === "tv" || section === "music") && item.path) {
+    openMediaPlayer(item, getLocalMediaUrl(item), section === "music" ? "Music" : "MediaCenter");
+    return;
+  }
+
+  if (item.launchUrl || item.launchPath || item.path) {
+    await openDesktopMediaItem(item);
+  }
 }
 
 async function getLocalLiveStreamUrl(item) {
@@ -2597,19 +2775,12 @@ async function openLiveTvItem(item) {
 
 function openMediaItem(item, section) {
   if (section === "live" || item.section === "live" || item.source === LIVE_TV_SOURCE) {
-    openLiveTvItem(item);
+    showMediaDetail(item, section);
     return;
   }
 
-  const streamingTarget = getStreamingItemTarget(item);
-
-  if (streamingTarget) {
-    openBrowser(streamingTarget);
-    return;
-  }
-
-  if (item.launchUrl || item.path) {
-    openDesktopMediaItem(item);
+  if (getStreamingItemTarget(item) || item.streamUrl || item.localItem || item.launchUrl || item.launchPath || item.path) {
+    showMediaDetail(item, section);
     return;
   }
 
@@ -2664,7 +2835,7 @@ function createMediaCard(item, section, index) {
     article.append(badge);
   }
 
-  if (getStreamingItemTarget(item) || item.streamUrl || item.localItem || item.launchUrl || item.path) {
+  if (getStreamingItemTarget(item) || item.streamUrl || item.localItem || item.launchUrl || item.launchPath || item.path) {
     article.addEventListener("click", () => openMediaItem(item, section));
   } else if (item.seasons) {
     article.addEventListener("click", () => {
@@ -2793,6 +2964,9 @@ function createEmptyMediaState(query) {
 
 function renderMediaCenter(focusSection = "home") {
   currentMediaSection = focusSection;
+  if (selectedMediaDetail?.section !== focusSection) {
+    selectedMediaDetail = null;
+  }
   const selected = getMediaSection(focusSection);
   const query = mediaSearchInput.value.trim();
   const sourceShelves =
@@ -2803,6 +2977,9 @@ function renderMediaCenter(focusSection = "home") {
     .map((shelf) => createMediaShelf(shelf, selected.section, query))
     .filter(Boolean);
   const seasonPanel = selected.section === "tv" ? createSeasonPanel(selected, query) : null;
+  const detailPanel = selectedMediaDetail
+    ? createMediaDetailPanel(selectedMediaDetail.item, selectedMediaDetail.section)
+    : null;
 
   mediaTabs.forEach((tab) => {
     const isActive = tab.dataset.section === focusSection;
@@ -2824,6 +3001,7 @@ function renderMediaCenter(focusSection = "home") {
     .join("");
 
   mediaSections.replaceChildren(
+    ...(detailPanel ? [detailPanel] : []),
     ...(seasonPanel ? [seasonPanel] : []),
     ...(shelves.length ? shelves : [createEmptyMediaState(query)]),
   );
@@ -3828,11 +4006,11 @@ closeSourceManager.addEventListener("click", () => {
   setSourceManagerOpen(false);
 });
 
-closeLivePlayer?.addEventListener("click", closeLiveTvPlayer);
+closeLivePlayer?.addEventListener("click", closeMediaPlayer);
 
 livePlayer?.addEventListener("click", (event) => {
   if (event.target === livePlayer) {
-    closeLiveTvPlayer();
+    closeMediaPlayer();
   }
 });
 
